@@ -24,6 +24,8 @@ type LoadConfig struct {
 	PkgNames []string
 	// BuildFlags are the flags used by the ast.
 	BuildFlags []string
+	// Verbose sets the loader in verbose mode.
+	Verbose bool
 }
 
 // LoadPackages parses Golang packages using AST.
@@ -33,7 +35,12 @@ func LoadPackages(cfg *LoadConfig) (PackageMap, error) {
 		return nil, err
 	}
 	pkgNames = resolveLoadedPackages(pkgNames)
-	if len(pkgNames) != 0 {
+	switch len(pkgNames) {
+	case 0:
+		if cfg.Verbose {
+			fmt.Println("all packages from the input already loaded")
+		}
+	default:
 		pkgs, err := loadPackages(cfg, pkgNames...)
 		if err != nil {
 			return nil, err
@@ -41,7 +48,7 @@ func LoadPackages(cfg *LoadConfig) (PackageMap, error) {
 		if len(pkgs) == 0 {
 			return nil, errors.New("no packages found")
 		}
-		parsePackages(pkgs...)
+		parsePackages(cfg, pkgs...)
 	}
 	return getPackageMap(), nil
 }
@@ -55,21 +62,23 @@ func getPackageMap() PackageMap {
 	return pkgMap.pkgMap
 }
 
-func loadPackages(source *LoadConfig, pkgNames ...string) ([]*packages.Package, error) {
+func loadPackages(cfg *LoadConfig, pkgNames ...string) ([]*packages.Package, error) {
 	now := time.Now()
-	cfg := &packages.Config{
+	pkgCfg := &packages.Config{
 		Mode:       packages.NeedName | packages.NeedDeps | packages.NeedImports | packages.NeedTypes,
-		BuildFlags: source.BuildFlags,
+		BuildFlags: cfg.BuildFlags,
 	}
 
-	pkgs, err := packages.Load(cfg, pkgNames...)
+	pkgs, err := packages.Load(pkgCfg, pkgNames...)
 	if err != nil {
 		return nil, err
 	}
 	if packages.PrintErrors(pkgs) > 1 {
 		return nil, errors.New("error while loading import packages")
 	}
-	fmt.Printf("AST packages loaded in: %s\n", time.Since(now))
+	if cfg.Verbose {
+		fmt.Printf("AST packages loaded in: %s\n", time.Since(now))
+	}
 	return pkgs, nil
 }
 
@@ -103,7 +112,7 @@ func resolveLoadedPackages(pkgNames []string) (result []string) {
 	return result
 }
 
-func parsePackages(newPkgs ...*packages.Package) {
+func parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package) {
 	now := time.Now()
 
 	var pkgs []*packages.Package
@@ -137,7 +146,10 @@ func parsePackages(newPkgs ...*packages.Package) {
 		go rootPkg.parseTypePkg(initWg, finishGroup)
 	}
 	finishGroup.Wait()
-	fmt.Printf("GetPackages parsed in %s\n", time.Since(now))
+
+	if cfg.Verbose {
+		fmt.Printf("astreflect packages parsed in %s\n", time.Since(now))
+	}
 }
 
 type importedPackage struct {
