@@ -1,2 +1,8 @@
-# astreflect
-Package astreflect contains Golang ast based types reflection.
+# Golang AST reflection
+
+Package `astreflect` defines Golang ast based types reflection.
+
+
+
+
+
