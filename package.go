@@ -173,6 +173,11 @@ func (p PkgPath) Identifier() string {
 	return ""
 }
 
+// FullName gets the full name of given PkgPath in a string type.
+func (p PkgPath) FullName() string {
+	return string(p)
+}
+
 // IsStandard checks if the package is standard.
 func (p PkgPath) IsStandard() bool {
 	return p == builtInPkgPath

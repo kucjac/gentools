@@ -12,8 +12,8 @@ type WrappedType struct {
 }
 
 // Name implements Type interface.
-func (w *WrappedType) Name(identified bool) string {
-	if identified {
+func (w *WrappedType) Name(identified bool, packageContext string) string {
+	if identified && packageContext != w.PackagePath.FullName() {
 		if i := w.PackagePath.Identifier(); i != "" {
 			return i + "." + w.WrapperName
 		}
@@ -39,4 +39,9 @@ func (w *WrappedType) Kind() Kind {
 // Elem implements Type interface.
 func (w *WrappedType) Elem() Type {
 	return w.Type
+}
+
+// String implements Type interface.
+func (w *WrappedType) String() string {
+	return w.Name(true, "")
 }

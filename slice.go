@@ -12,11 +12,11 @@ type ArrayType struct {
 }
 
 // Name implements Type interface.
-func (a *ArrayType) Name(identifier bool) string {
+func (a *ArrayType) Name(identifier bool, packageContext string) string {
 	if a.ArrayKind == Slice {
-		return "[]" + a.Type.Name(identifier)
+		return "[]" + a.Type.Name(identifier, packageContext)
 	}
-	return fmt.Sprintf("[%d]%s", a.ArraySize, a.Type.Name(identifier))
+	return fmt.Sprintf("[%d]%s", a.ArraySize, a.Type.Name(identifier, packageContext))
 }
 
 // FullName implements Type interface.
@@ -40,4 +40,9 @@ func (a *ArrayType) Kind() Kind {
 // Elem implements Type interface.
 func (a *ArrayType) Elem() Type {
 	return a.Type
+}
+
+// String implements Type interface.
+func (a *ArrayType) String() string {
+	return a.Name(true, "")
 }

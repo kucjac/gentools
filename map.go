@@ -2,7 +2,7 @@ package astreflect
 
 import "fmt"
 
-var _ Type = &MapType{}
+var _ Type = (*MapType)(nil)
 
 // MapType is the type wrapper for the standar key value map type.
 type MapType struct {
@@ -11,8 +11,8 @@ type MapType struct {
 }
 
 // Name implements Type interface.
-func (m *MapType) Name(identified bool) string {
-	return fmt.Sprintf("map[%s]%s", m.Key.Name(identified), m.Value.Name(identified))
+func (m *MapType) Name(identified bool, packageContext string) string {
+	return fmt.Sprintf("map[%s]%s", m.Key.Name(identified, packageContext), m.Value.Name(identified, packageContext))
 }
 
 // FullName implements Type interface.
@@ -33,4 +33,9 @@ func (m *MapType) Kind() Kind {
 // Elem as the map has both the key and value it needs to be dereferenced manually.
 func (m *MapType) Elem() Type {
 	return nil
+}
+
+// String implements Type interface.
+func (m *MapType) String() string {
+	return m.Name(true, "")
 }

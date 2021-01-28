@@ -54,23 +54,18 @@ func (s *StructType) Implements(interfaceType *InterfaceType, pointer bool) bool
 				if sMethod.Variadic != iMethod.Variadic {
 					return false
 				}
-				if sMethod.Receiver.Pointer && !pointer {
+				if sMethod.Receiver.IsPointer() && !pointer {
 					return false
 				}
 
-				for _, iIn := range iMethod.In {
-					for _, sIn := range sMethod.In {
-						if iIn.Type.FullName() != sIn.Type.FullName() {
-							return false
-						}
+				for i := 0; i < len(iMethod.In); i++ {
+					if iMethod.In[i].Type.FullName() != sMethod.In[i].Type.FullName() {
+						return false
 					}
 				}
-
-				for _, iOut := range iMethod.Out {
-					for _, sOut := range sMethod.Out {
-						if iOut.Type.FullName() != sOut.Type.FullName() {
-							return false
-						}
+				for i := 0; i < len(iMethod.Out); i++ {
+					if iMethod.Out[i].Type.FullName() != sMethod.Out[i].Type.FullName() {
+						return false
 					}
 				}
 				found = true
@@ -84,8 +79,9 @@ func (s *StructType) Implements(interfaceType *InterfaceType, pointer bool) bool
 	return true
 }
 
-func (s *StructType) Name(identifier bool) string {
-	if identifier {
+// Name implements Type interface.
+func (s *StructType) Name(identifier bool, packageContext string) string {
+	if identifier && packageContext != s.PackagePath.FullName() {
 		if i := s.PackagePath.Identifier(); i != "" {
 			return i + "." + s.TypeName
 		}
@@ -93,20 +89,29 @@ func (s *StructType) Name(identifier bool) string {
 	return s.TypeName
 }
 
+// FullName implements Type interface.
 func (s *StructType) FullName() string {
 	return string(s.PackagePath) + "/" + s.TypeName
 }
 
+// PkgPath implements Type interface.
 func (s *StructType) PkgPath() PkgPath {
 	return s.PackagePath
 }
 
+// Kind implements Type interface.
 func (s *StructType) Kind() Kind {
 	return Struct
 }
 
+// Elem implements Type interface.
 func (s *StructType) Elem() Type {
 	return nil
+}
+
+// String implements Type interface.
+func (s *StructType) String() string {
+	return s.Name(true, "")
 }
 
 // StructField is a structure field model.
@@ -118,6 +123,11 @@ type StructField struct {
 	Index     []int
 	Embedded  bool
 	Anonymous bool
+}
+
+// String implements fmt.Stringer interface.
+func (s StructField) String() string {
+	return s.Name + "\t" + s.Type.String() + "\t`" + string(s.Tag) + "`"
 }
 
 // A StructTag is the tag string in a struct field.

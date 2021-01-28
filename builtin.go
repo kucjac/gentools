@@ -49,7 +49,7 @@ func init() {
 		InterfaceName: "error",
 		Methods: []FunctionType{{
 			FuncName: "Error",
-			Out:      []IOParam{{Type: stringType}},
+			Out:      []FuncParam{{Type: stringType}},
 		}},
 	}
 	builtIn.Interfaces = append(builtIn.Interfaces, er)
@@ -60,6 +60,7 @@ func init() {
 // The zero Kind is not a valid kind.
 type Kind uint
 
+// String implements fmt.Stringer interface.
 func (k Kind) String() string {
 	name, ok := kindNameMap[k]
 	if !ok {
@@ -160,7 +161,7 @@ func GetBuiltInType(name string) (Type, bool) {
 	return builtIn.GetType(name)
 }
 
-var _ Type = &BuiltInType{}
+var _ Type = (*BuiltInType)(nil)
 
 // BuiltInType is the built in type definition.
 type BuiltInType struct {
@@ -168,13 +169,13 @@ type BuiltInType struct {
 	StdKind  Kind
 }
 
-// FullName implements Type interface.
-func (s *BuiltInType) FullName() string {
+// Name implements Type interface.
+func (s *BuiltInType) Name(_ bool, _ string) string {
 	return s.TypeName
 }
 
-// Name implements Type interface.
-func (s *BuiltInType) Name(_ bool) string {
+// FullName implements Type interface.
+func (s *BuiltInType) FullName() string {
 	return s.TypeName
 }
 
@@ -188,8 +189,14 @@ func (s *BuiltInType) Kind() Kind {
 	return s.StdKind
 }
 
+// Elem implements Type interface.
 func (s *BuiltInType) Elem() Type {
 	return nil
+}
+
+// String implements Type interface.
+func (s *BuiltInType) String() string {
+	return s.TypeName
 }
 
 type builtInPackage struct {

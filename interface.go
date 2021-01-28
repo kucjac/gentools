@@ -1,6 +1,6 @@
 package astreflect
 
-var _ Type = &InterfaceType{}
+var _ Type = (*InterfaceType)(nil)
 
 // InterfaceType is the interface type model definition.
 type InterfaceType struct {
@@ -10,8 +10,9 @@ type InterfaceType struct {
 	Methods       []FunctionType
 }
 
-func (i *InterfaceType) Name(identified bool) string {
-	if identified {
+// Name implements Type interface.
+func (i *InterfaceType) Name(identified bool, packageContext string) string {
+	if identified && packageContext != i.PackagePath.FullName() {
 		if identifier := i.PackagePath.Identifier(); identifier != "" {
 			return identifier + "." + i.InterfaceName
 		}
@@ -19,30 +20,27 @@ func (i *InterfaceType) Name(identified bool) string {
 	return i.InterfaceName
 }
 
+// FullName implements Type interface.
 func (i *InterfaceType) FullName() string {
 	return string(i.PackagePath) + "/" + i.InterfaceName
 }
 
+// PkgPath implements Type interface
 func (i *InterfaceType) PkgPath() PkgPath {
 	return i.PackagePath
 }
 
+// Kind implements Type interface.
 func (i *InterfaceType) Kind() Kind {
 	return Interface
 }
 
+// Elem implements Type interface.
 func (i *InterfaceType) Elem() Type {
 	return nil
 }
 
-// Receiver is the function (method) receiver with the name and a pointer flag.
-type Receiver struct {
-	Name    string
-	Pointer bool
-}
-
-// IOParam is the input/output parameter of functions and methods.
-type IOParam struct {
-	Name string
-	Type Type
+// String implements Type interface.
+func (i *InterfaceType) String() string {
+	return i.Name(true, "")
 }

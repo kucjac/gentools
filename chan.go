@@ -13,7 +13,7 @@ type ChanType struct {
 }
 
 // Name implements Type interface.
-func (c ChanType) Name(identified bool) string {
+func (c *ChanType) Name(identified bool, packageContext string) string {
 	sb := strings.Builder{}
 	if c.Dir == SendOnly {
 		sb.WriteString("<-")
@@ -23,12 +23,12 @@ func (c ChanType) Name(identified bool) string {
 		sb.WriteString("<-")
 	}
 	sb.WriteRune(' ')
-	sb.WriteString(c.Type.Name(identified))
+	sb.WriteString(c.Type.Name(identified, packageContext))
 	return sb.String()
 }
 
 // FullName implements Type interface.
-func (c ChanType) FullName() string {
+func (c *ChanType) FullName() string {
 	sb := strings.Builder{}
 	if c.Dir == SendOnly {
 		sb.WriteString("<-")
@@ -43,18 +43,22 @@ func (c ChanType) FullName() string {
 }
 
 // PkgPath implements Type interface.
-func (c ChanType) PkgPath() PkgPath {
+func (c *ChanType) PkgPath() PkgPath {
 	return builtInPkgPath
 }
 
 // Kind gets the kind of the type.
-func (c ChanType) Kind() Kind {
+func (c *ChanType) Kind() Kind {
 	return Chan
 }
 
 // Elem gets the channel element type.
-func (c ChanType) Elem() Type {
+func (c *ChanType) Elem() Type {
 	return c.Type
+}
+
+func (c ChanType) String() string {
+	return c.FullName()
 }
 
 // A ChanDir value indicates a channel direction.

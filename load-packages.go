@@ -474,13 +474,13 @@ func (r *rootPackage) parseSignatureType(p *Package, s *types.Signature, xm *Fun
 	xm.Variadic = s.Variadic()
 	if needReceiver && s.Recv() != nil {
 		xm.Receiver = &Receiver{Name: s.Recv().Name()}
-		_, xm.Receiver.Pointer = s.Recv().Type().(*types.Pointer)
+		xm.Receiver.Type, _ = r.dereferenceType(p, s.Recv().Type())
 	}
 	if params := s.Params(); params != nil {
-		xm.In = make([]IOParam, params.Len())
+		xm.In = make([]FuncParam, params.Len())
 		for j := 0; j < params.Len(); j++ {
 			pm := params.At(j)
-			in := IOParam{Name: pm.Name()}
+			in := FuncParam{Name: pm.Name()}
 			pt, ok := r.dereferenceType(p, pm.Type())
 			if !ok {
 				return false
@@ -491,10 +491,10 @@ func (r *rootPackage) parseSignatureType(p *Package, s *types.Signature, xm *Fun
 	}
 
 	if results := s.Results(); results != nil {
-		xm.Out = make([]IOParam, results.Len())
+		xm.Out = make([]FuncParam, results.Len())
 		for j := 0; j < results.Len(); j++ {
 			pm := results.At(j)
-			out := IOParam{Name: pm.Name()}
+			out := FuncParam{Name: pm.Name()}
 			pt, ok := r.dereferenceType(p, pm.Type())
 			if !ok {
 				return false

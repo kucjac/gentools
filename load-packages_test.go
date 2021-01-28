@@ -6,7 +6,7 @@ import (
 
 func TestParsePackages(t *testing.T) {
 	// On test purpose try to parse this package.
-	pkgs, err := LoadPackages(&LoadConfig{Paths: []string{"."}})
+	pkgs, err := LoadPackages(&LoadConfig{Paths: []string{"."}, Verbose: true})
 	if err != nil {
 		t.Errorf("Parsing packages failed: %v", err)
 		return
@@ -93,8 +93,8 @@ func TestParsePackages(t *testing.T) {
 		if sField.Name != expectedName {
 			t.Errorf("Expected field name mismatch. Expected: %s, is %s", expectedName, sField.Name)
 		}
-		if sField.Type.Name(false) != expectedType {
-			t.Errorf("Expected field type mismatch. Expected: %s, is %s", expectedType, sField.Type.Name(false))
+		if sField.Type.Name(false, "") != expectedType {
+			t.Errorf("Expected field type mismatch. Expected: %s, is %s", expectedType, sField.Type.Name(false, ""))
 		}
 		if sField.Type.Kind() != expectedKind {
 			t.Errorf("Expected field kind mismatch. Expected: %s is %s", expectedKind, sField.Type.Kind())
@@ -145,7 +145,11 @@ func TestParsePackages(t *testing.T) {
 		t.Errorf("'embeddedType' field name should be 'Imported' but is: %s", etField.Name)
 		return
 	}
-	if etField.Type.Name(true) != "*testing.T" {
-		t.Errorf("'embeddedType' field type should be '*testing.T' but is: %v", etField.Type.Name(true))
+	if etField.Type.Name(true, "") != "*testing.T" {
+		t.Errorf("'embeddedType' field type should be '*testing.T' but is: %v", etField.Type.Name(true, ""))
 	}
+	if etField.Type.Name(true, "testing") != "*T" {
+		t.Errorf("'embeddedType' field type with 'testing' package context should be '*T' but is: %v", etField.Type.Name(true, ""))
+	}
+
 }
