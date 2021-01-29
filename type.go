@@ -1,18 +1,5 @@
 package astreflect
 
-// Dereference is getting Type dereferenced basic value.
-// If the value is basic returns nil.
-func Dereference(t Type) Type {
-	var e Type
-	for {
-		if e = t.Elem(); e == nil {
-			break
-		}
-		t = e
-	}
-	return e
-}
-
 // Type is the interface used by all golang type reflections in package.
 type Type interface {
 	// Name gets the type name with or without package identifier.
@@ -38,7 +25,22 @@ type Type interface {
 	Equal(another Type) bool
 }
 
+// Packager is the interface that allows to get Type packages.
+// Only the Types that contains the name stores the Package i.e.: StructType, InterfaceType, WrappedType, FunctionType.
 type Packager interface {
 	// Package gets the Package for given type.
 	Package() *Package
+}
+
+// Dereference is getting Type dereferenced basic value.
+// If the value is basic returns nil.
+func Dereference(t Type) Type {
+	var e Type
+	for {
+		if e = t.Elem(); e == nil {
+			break
+		}
+		t = e
+	}
+	return e
 }

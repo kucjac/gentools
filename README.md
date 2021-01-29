@@ -11,7 +11,7 @@ This package allows reading and scanning the content of go files based on the no
 
 The `astreflect.PackageMap` contains context of mapped packages with their structs and dependencies.
  
-The map could get loaded by using `LoadPackages` fuction or `astreflect.PackageMap` method with the same name.
+The map could get loaded by using `LoadPackages` function or `astreflect.PackageMap` method with the same name.
 Both of these loads provided input packages, whereas the method gets only required that doesn't already exist in itself.
 
 Example:

@@ -165,8 +165,15 @@ var kindNameMap = map[Kind]string{
 
 // IsBuiltIn checks if given name is a built in type.
 func IsBuiltIn(kindName string) (Kind, bool) {
-	k, ok := stdKindMap[kindName]
-	return k, ok
+	switch kindName {
+	case "byte":
+		return Uint8, true
+	case "rune":
+		return Int32, true
+	default:
+		k, ok := stdKindMap[kindName]
+		return k, ok
+	}
 }
 
 // GetBuiltInType gets the built in type with given name.
