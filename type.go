@@ -13,43 +13,6 @@ func Dereference(t Type) Type {
 	return e
 }
 
-var _ Type = (*PointerType)(nil)
-
-// PointerType is the type implementation that defines pointer type.
-type PointerType struct {
-	PointedType Type
-}
-
-// Name implements Type interface.
-func (p *PointerType) Name(identified bool, pkgContext string) string {
-	return "*" + p.PointedType.Name(identified, pkgContext)
-}
-
-// FullName implements Type interface.
-func (p *PointerType) FullName() string {
-	return "*" + p.PointedType.FullName()
-}
-
-// PkgPath implements Type interface.
-func (p *PointerType) PkgPath() PkgPath {
-	return p.PointedType.PkgPath()
-}
-
-// Kind implements Type interface.
-func (p *PointerType) Kind() Kind {
-	return Ptr
-}
-
-// Elem implements Type interface.
-func (p *PointerType) Elem() Type {
-	return p.PointedType
-}
-
-// String implements Type interface.
-func (p *PointerType) String() string {
-	return p.Name(true, "")
-}
-
 // Type is the interface used by all golang type reflections in package.
 type Type interface {
 	// Name gets the type name with or without package identifier.
@@ -71,4 +34,8 @@ type Type interface {
 	Elem() Type
 	// String gets the full name string representation of given type.
 	String() string
+	// Zero gets zero value string of given type.
+	Zero(identified bool, packageContext string) string
+	// Equal checks if the types matches exact.
+	Equal(another Type) bool
 }

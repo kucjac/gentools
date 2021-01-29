@@ -451,11 +451,11 @@ func (r *rootPackage) parseStructFields(p *Package, ot *types.Struct, t *StructT
 	return false
 }
 
-type methoder interface {
+type astMethoder interface {
 	Method(int) *types.Func
 }
 
-func (r *rootPackage) parseMethod(p *Package, named methoder, i int, needReceiver bool) (FunctionType, bool) {
+func (r *rootPackage) parseMethod(p *Package, named astMethoder, i int, needReceiver bool) (FunctionType, bool) {
 	m := named.Method(i)
 
 	s, ok := m.Type().(*types.Signature)

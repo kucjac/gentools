@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-var _ Type = (*FunctionType)(nil)
+var _ Type = FunctionType{}
 
 // FunctionType is the function type used for getting.
 type FunctionType struct {
@@ -18,7 +18,7 @@ type FunctionType struct {
 }
 
 // Name implements Type interface.
-func (f *FunctionType) Name(identified bool, packageContext string) string {
+func (f FunctionType) Name(identified bool, packageContext string) string {
 	if identified && packageContext != f.PackagePath.FullName() {
 		if i := f.PackagePath.Identifier(); i != "" {
 			return i + "." + f.FuncName
@@ -28,27 +28,27 @@ func (f *FunctionType) Name(identified bool, packageContext string) string {
 }
 
 // FullName implements Type interface.
-func (f *FunctionType) FullName() string {
+func (f FunctionType) FullName() string {
 	return string(f.PackagePath) + "/" + f.FuncName
 }
 
 // PkgPath implements Type interface.
-func (f *FunctionType) PkgPath() PkgPath {
+func (f FunctionType) PkgPath() PkgPath {
 	return f.PackagePath
 }
 
 // Kind implements Type interface.
-func (f *FunctionType) Kind() Kind {
+func (f FunctionType) Kind() Kind {
 	return Func
 }
 
 // Elem implements Type interface.
-func (f *FunctionType) Elem() Type {
+func (f FunctionType) Elem() Type {
 	return nil
 }
 
 // String implements Type interface.
-func (f *FunctionType) String() string {
+func (f FunctionType) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("func ")
 	if f.Receiver != nil {
@@ -71,6 +71,28 @@ func (f *FunctionType) String() string {
 		}
 	}
 	return sb.String()
+}
+
+// Zero implements Type interface.
+func (f FunctionType) Zero(identified bool, packageContext string) string {
+	return "nil"
+}
+
+// Equal implements Type interface.
+func (f FunctionType) Equal(another Type) bool {
+	var ft FunctionType
+	switch t := another.(type) {
+	case *FunctionType:
+		ft = *t
+	case FunctionType:
+		ft = t
+	default:
+		return false
+	}
+	if (f.Receiver == nil && ft.Receiver != nil) || (ft.Receiver == nil && f.Receiver != nil) {
+		return false
+	}
+	return f.PackagePath == ft.PackagePath && f.FuncName == ft.FuncName
 }
 
 // FuncParam is the input/output parameter of functions and methods.

@@ -11,31 +11,53 @@ type MapType struct {
 }
 
 // Name implements Type interface.
-func (m *MapType) Name(identified bool, packageContext string) string {
+func (m MapType) Name(identified bool, packageContext string) string {
 	return fmt.Sprintf("map[%s]%s", m.Key.Name(identified, packageContext), m.Value.Name(identified, packageContext))
 }
 
 // FullName implements Type interface.
-func (m *MapType) FullName() string {
+func (m MapType) FullName() string {
 	return fmt.Sprintf("map[%s]%s", m.Key.FullName(), m.Value.FullName())
 }
 
 // PkgPath implements Type interface.
-func (m *MapType) PkgPath() PkgPath {
+func (m MapType) PkgPath() PkgPath {
 	return builtInPkgPath
 }
 
 // Kind implements Type interface.
-func (m *MapType) Kind() Kind {
+func (m MapType) Kind() Kind {
 	return Map
 }
 
 // Elem as the map has both the key and value it needs to be dereferenced manually.
-func (m *MapType) Elem() Type {
+func (m MapType) Elem() Type {
 	return nil
 }
 
 // String implements Type interface.
-func (m *MapType) String() string {
+func (m MapType) String() string {
 	return m.Name(true, "")
+}
+
+// Zero implements Type interface.
+func (m MapType) Zero(_ bool, _ string) string {
+	return "nil"
+}
+
+// Equal implements Type interface.
+func (m MapType) Equal(another Type) bool {
+	var mp MapType
+	switch mt := another.(type) {
+	case *MapType:
+		mp = *mt
+	case MapType:
+		mp = mt
+	default:
+		return false
+	}
+	if !mp.Key.Equal(m.Key) {
+		return false
+	}
+	return mp.Value.Equal(m.Value)
 }

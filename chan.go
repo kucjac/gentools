@@ -13,7 +13,7 @@ type ChanType struct {
 }
 
 // Name implements Type interface.
-func (c *ChanType) Name(identified bool, packageContext string) string {
+func (c ChanType) Name(identified bool, packageContext string) string {
 	sb := strings.Builder{}
 	if c.Dir == SendOnly {
 		sb.WriteString("<-")
@@ -28,7 +28,7 @@ func (c *ChanType) Name(identified bool, packageContext string) string {
 }
 
 // FullName implements Type interface.
-func (c *ChanType) FullName() string {
+func (c ChanType) FullName() string {
 	sb := strings.Builder{}
 	if c.Dir == SendOnly {
 		sb.WriteString("<-")
@@ -43,22 +43,45 @@ func (c *ChanType) FullName() string {
 }
 
 // PkgPath implements Type interface.
-func (c *ChanType) PkgPath() PkgPath {
+func (c ChanType) PkgPath() PkgPath {
 	return builtInPkgPath
 }
 
 // Kind gets the kind of the type.
-func (c *ChanType) Kind() Kind {
+func (c ChanType) Kind() Kind {
 	return Chan
 }
 
 // Elem gets the channel element type.
-func (c *ChanType) Elem() Type {
+func (c ChanType) Elem() Type {
 	return c.Type
 }
 
+// String implements fmt.Stringer interface.
 func (c ChanType) String() string {
-	return c.FullName()
+	return c.Name(true, "")
+}
+
+// Zero implements Type interface.
+func (c ChanType) Zero(_ bool, _ string) string {
+	return "nil"
+}
+
+// Equal implements Type interface.
+func (c ChanType) Equal(another Type) bool {
+	var ct ChanType
+	switch t := another.(type) {
+	case *ChanType:
+		ct = *t
+	case ChanType:
+		ct = t
+	default:
+		return false
+	}
+	if c.Dir != ct.Dir {
+		return false
+	}
+	return c.Type.Equal(ct.Type)
 }
 
 // A ChanDir value indicates a channel direction.

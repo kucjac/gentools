@@ -1,5 +1,9 @@
 package astreflect
 
+import (
+	"fmt"
+)
+
 const (
 	builtInPkgName = "builtin"
 	builtInPkgPath = PkgPath(builtInPkgName)
@@ -69,6 +73,16 @@ func (k Kind) String() string {
 	return name
 }
 
+// IsNumber checks if given kind is of number (integers, floats)
+func (k Kind) IsNumber() bool {
+	return k >= Int && k <= Float64
+}
+
+// IsBuiltin checks if given kind is
+func (k Kind) IsBuiltin() bool {
+	return k >= Bool && k <= String
+}
+
 // Enumerated kind representations.
 const (
 	Invalid Kind = iota
@@ -88,6 +102,7 @@ const (
 	Float64
 	Complex64
 	Complex128
+	String
 	Array
 	Chan
 	Func
@@ -95,28 +110,29 @@ const (
 	Map
 	Ptr
 	Slice
-	String
 	Struct
 	UnsafePointer
 	Wrapper
 )
 
 var stdKindMap = map[string]Kind{
-	"int":     Int,
-	"int8":    Int8,
-	"int16":   Int16,
-	"int32":   Int32,
-	"int64":   Int64,
-	"uint":    Uint,
-	"uint8":   Uint8,
-	"uint16":  Uint16,
-	"uint32":  Uint32,
-	"uint64":  Uint64,
-	"float32": Float32,
-	"float64": Float64,
-	"string":  String,
-	"bool":    Bool,
-	"uintptr": Uintptr,
+	"int":        Int,
+	"int8":       Int8,
+	"int16":      Int16,
+	"int32":      Int32,
+	"int64":      Int64,
+	"uint":       Uint,
+	"uint8":      Uint8,
+	"uint16":     Uint16,
+	"uint32":     Uint32,
+	"uint64":     Uint64,
+	"float32":    Float32,
+	"float64":    Float64,
+	"string":     String,
+	"bool":       Bool,
+	"uintptr":    Uintptr,
+	"complex64":  Complex64,
+	"complex128": Complex128,
 }
 
 var kindNameMap = map[Kind]string{
@@ -161,6 +177,15 @@ func GetBuiltInType(name string) (Type, bool) {
 	return builtIn.GetType(name)
 }
 
+// MustGetBuiltInType gets the built in type with given name. If the type is not found the function panics.
+func MustGetBuiltInType(name string) Type {
+	t, ok := builtIn.GetType(name)
+	if !ok {
+		panic(fmt.Sprintf("builtin type: '%s' not found", name))
+	}
+	return t
+}
+
 var _ Type = (*BuiltInType)(nil)
 
 // BuiltInType is the built in type definition.
@@ -170,33 +195,61 @@ type BuiltInType struct {
 }
 
 // Name implements Type interface.
-func (s *BuiltInType) Name(_ bool, _ string) string {
-	return s.TypeName
+func (b BuiltInType) Name(_ bool, _ string) string {
+	return b.TypeName
 }
 
 // FullName implements Type interface.
-func (s *BuiltInType) FullName() string {
-	return s.TypeName
+func (b BuiltInType) FullName() string {
+	return b.TypeName
 }
 
 // PkgPath implements Type interface.
-func (s *BuiltInType) PkgPath() PkgPath {
+func (b BuiltInType) PkgPath() PkgPath {
 	return builtInPkgPath
 }
 
 // Kind implements Type interface.
-func (s *BuiltInType) Kind() Kind {
-	return s.StdKind
+func (b BuiltInType) Kind() Kind {
+	return b.StdKind
 }
 
 // Elem implements Type interface.
-func (s *BuiltInType) Elem() Type {
+func (b BuiltInType) Elem() Type {
 	return nil
 }
 
 // String implements Type interface.
-func (s *BuiltInType) String() string {
-	return s.TypeName
+func (b BuiltInType) String() string {
+	return b.TypeName
+}
+
+func (b BuiltInType) Equal(another Type) bool {
+	var bt BuiltInType
+	switch t := another.(type) {
+	case *BuiltInType:
+		bt = *t
+	case BuiltInType:
+		bt = t
+	default:
+		return false
+	}
+	return b.StdKind == bt.StdKind
+}
+
+// Zero implements Type interface.
+func (b BuiltInType) Zero(_ bool, _ string) string {
+	if b.Kind().IsNumber() {
+		return "0"
+	}
+	switch b.Kind() {
+	case String:
+		return "\"\""
+	case Complex64, Complex128:
+		return "complex(0,0)"
+	default:
+		return "nil"
+	}
 }
 
 type builtInPackage struct {

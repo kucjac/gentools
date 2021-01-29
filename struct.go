@@ -14,69 +14,9 @@ type StructType struct {
 	Methods     []FunctionType
 }
 
-// Implements checks if the type t implements interface 'interfaceType'.
-func Implements(t Type, interfaceType *InterfaceType) bool {
-	var (
-		s         *StructType
-		isPointer bool
-	)
-	for s == nil {
-		switch tt := t.(type) {
-		case *PointerType:
-			isPointer = true
-			t = tt.PointedType
-		case *WrappedType:
-			t = tt.Type
-		case *StructType:
-			s = tt
-		default:
-			return false
-		}
-	}
-	return s.Implements(interfaceType, isPointer)
-}
-
 // Implements checks if given structure implements provided interface.
 func (s *StructType) Implements(interfaceType *InterfaceType, pointer bool) bool {
-	if len(interfaceType.Methods) > len(s.Methods) {
-		return false
-	}
-	for _, iMethod := range interfaceType.Methods {
-		var found bool
-		for _, sMethod := range s.Methods {
-			if sMethod.FuncName == iMethod.FuncName {
-				if len(iMethod.In) != len(sMethod.In) {
-					return false
-				}
-				if len(iMethod.Out) != len(sMethod.Out) {
-					return false
-				}
-				if sMethod.Variadic != iMethod.Variadic {
-					return false
-				}
-				if sMethod.Receiver.IsPointer() && !pointer {
-					return false
-				}
-
-				for i := 0; i < len(iMethod.In); i++ {
-					if iMethod.In[i].Type.FullName() != sMethod.In[i].Type.FullName() {
-						return false
-					}
-				}
-				for i := 0; i < len(iMethod.Out); i++ {
-					if iMethod.Out[i].Type.FullName() != sMethod.Out[i].Type.FullName() {
-						return false
-					}
-				}
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
+	return implements(interfaceType, s, pointer)
 }
 
 // Name implements Type interface.
@@ -112,6 +52,24 @@ func (s *StructType) Elem() Type {
 // String implements Type interface.
 func (s *StructType) String() string {
 	return s.Name(true, "")
+}
+
+// Zero implements Type interface.
+func (s *StructType) Zero(identified bool, packageContext string) string {
+	return s.Name(identified, packageContext) + "{}"
+}
+
+// Equal implements Type interface.
+func (s *StructType) Equal(another Type) bool {
+	st, ok := another.(*StructType)
+	if !ok {
+		return false
+	}
+	return st.PackagePath == s.PackagePath && st.TypeName == s.TypeName
+}
+
+func (s *StructType) getMethods() []FunctionType {
+	return s.Methods
 }
 
 // StructField is a structure field model.

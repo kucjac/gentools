@@ -2,7 +2,7 @@ package astreflect
 
 import "fmt"
 
-var _ Type = (*ArrayType)(nil)
+var _ Type = ArrayType{}
 
 // ArrayType is the array or slice representing type.
 type ArrayType struct {
@@ -12,7 +12,7 @@ type ArrayType struct {
 }
 
 // Name implements Type interface.
-func (a *ArrayType) Name(identifier bool, packageContext string) string {
+func (a ArrayType) Name(identifier bool, packageContext string) string {
 	if a.ArrayKind == Slice {
 		return "[]" + a.Type.Name(identifier, packageContext)
 	}
@@ -20,7 +20,7 @@ func (a *ArrayType) Name(identifier bool, packageContext string) string {
 }
 
 // FullName implements Type interface.
-func (a *ArrayType) FullName() string {
+func (a ArrayType) FullName() string {
 	if a.ArrayKind == Slice {
 		return "[]" + a.Type.FullName()
 	}
@@ -28,21 +28,49 @@ func (a *ArrayType) FullName() string {
 }
 
 // PkgPath implements Type interface.
-func (a *ArrayType) PkgPath() PkgPath {
+func (a ArrayType) PkgPath() PkgPath {
 	return builtInPkgPath
 }
 
 // Kind implements Type interface.
-func (a *ArrayType) Kind() Kind {
+func (a ArrayType) Kind() Kind {
 	return a.ArrayKind
 }
 
 // Elem implements Type interface.
-func (a *ArrayType) Elem() Type {
+func (a ArrayType) Elem() Type {
 	return a.Type
 }
 
 // String implements Type interface.
-func (a *ArrayType) String() string {
+func (a ArrayType) String() string {
 	return a.Name(true, "")
+}
+
+// Zero implements Type interface.
+func (a ArrayType) Zero(identified bool, packageContext string) string {
+	if a.Kind() == Slice {
+		return "nil"
+	}
+	return a.Name(identified, packageContext) + "{}"
+}
+
+// Equal implements Type interface.
+func (a ArrayType) Equal(another Type) bool {
+	var at ArrayType
+	switch t := another.(type) {
+	case *ArrayType:
+		at = *t
+	case ArrayType:
+		at = t
+	default:
+		return false
+	}
+	if a.ArrayKind != at.ArrayKind {
+		return false
+	}
+	if a.ArrayKind == Array && a.ArraySize != at.ArraySize {
+		return false
+	}
+	return a.Type.Equal(at.Type)
 }
