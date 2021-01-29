@@ -3,8 +3,8 @@ package astreflect
 import "fmt"
 
 // MapOf creates a map of given key, value types.
-func MapOf(key, value Type) MapType {
-	return MapType{Key: key, Value: value}
+func MapOf(key, value Type) *MapType {
+	return &MapType{Key: key, Value: value}
 }
 
 var _ Type = (*MapType)(nil)

@@ -5,8 +5,8 @@ import (
 )
 
 // ChanOf creates the channel of given type with given direction.
-func ChanOf(dir ChanDir, chanType Type) ChanType {
-	return ChanType{Type: chanType, Dir: dir}
+func ChanOf(dir ChanDir, chanType Type) *ChanType {
+	return &ChanType{Type: chanType, Dir: dir}
 }
 
 var _ Type = (*ChanType)(nil)

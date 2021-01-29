@@ -3,13 +3,13 @@ package astreflect
 import "fmt"
 
 // SliceOf creates the Slice of given inner types.
-func SliceOf(inner Type) ArrayType {
-	return ArrayType{ArrayKind: Slice, Type: inner}
+func SliceOf(inner Type) *ArrayType {
+	return &ArrayType{ArrayKind: Slice, Type: inner}
 }
 
 // ArrayOf creates the Array of given size with inner type.
-func ArrayOf(inner Type, size int) ArrayType {
-	return ArrayType{ArrayKind: Array, Type: inner, ArraySize: size}
+func ArrayOf(inner Type, size int) *ArrayType {
+	return &ArrayType{ArrayKind: Array, Type: inner, ArraySize: size}
 }
 
 var _ Type = ArrayType{}

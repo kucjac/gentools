@@ -1,8 +1,8 @@
 package astreflect
 
 // PointerTo creates a pointer of given type.
-func PointerTo(pointsTo Type) Type {
-	return PointerType{PointedType: pointsTo}
+func PointerTo(pointsTo Type) *PointerType {
+	return &PointerType{PointedType: pointsTo}
 }
 
 var _ Type = PointerType{}
