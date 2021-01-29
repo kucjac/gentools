@@ -26,8 +26,6 @@ type Type interface {
 	Name(identified bool, packageContext string) string
 	// FullName gets the full name of given type with the full package name and a type.
 	FullName() string
-	// PkgPath gets the PkgPath for given type.
-	PkgPath() PkgPath
 	// Kind gets the Kind of given type.
 	Kind() Kind
 	// Elem gets the wrapped, pointed, base of
@@ -38,4 +36,9 @@ type Type interface {
 	Zero(identified bool, packageContext string) string
 	// Equal checks if the types matches exact.
 	Equal(another Type) bool
+}
+
+type Packager interface {
+	// Package gets the Package for given type.
+	Package() *Package
 }

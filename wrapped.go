@@ -6,15 +6,15 @@ var _ Type = WrappedType{}
 // I.e.: 'type Custom int' would be a WrappedType over BuiltIn(int) type.
 type WrappedType struct {
 	Comment     string
-	PackagePath PkgPath
+	Pkg         *Package
 	WrapperName string
 	Type        Type
 }
 
 // Name implements Type interface.
 func (w WrappedType) Name(identified bool, packageContext string) string {
-	if identified && packageContext != w.PackagePath.FullName() {
-		if i := w.PackagePath.Identifier(); i != "" {
+	if identified && packageContext != w.Pkg.Path {
+		if i := w.Pkg.Identifier; i != "" {
 			return i + "." + w.WrapperName
 		}
 	}
@@ -23,12 +23,12 @@ func (w WrappedType) Name(identified bool, packageContext string) string {
 
 // FullName implements Type interface.
 func (w WrappedType) FullName() string {
-	return string(w.PackagePath) + "/" + w.WrapperName
+	return w.Pkg.Path + "/" + w.WrapperName
 }
 
 // PkgPath implements Type interface.
-func (w WrappedType) PkgPath() PkgPath {
-	return w.PackagePath
+func (w WrappedType) Package() *Package {
+	return w.Pkg
 }
 
 // Kind implements Type interface.
@@ -78,5 +78,5 @@ func (w WrappedType) Equal(another Type) bool {
 	default:
 		return false
 	}
-	return w.PackagePath == wt.PackagePath && wt.WrapperName == w.WrapperName
+	return w.Pkg == wt.Pkg && wt.WrapperName == w.WrapperName
 }

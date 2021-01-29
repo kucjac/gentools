@@ -2,6 +2,16 @@ package astreflect
 
 import "fmt"
 
+// SliceOf creates the Slice of given inner types.
+func SliceOf(inner Type) ArrayType {
+	return ArrayType{ArrayKind: Slice, Type: inner}
+}
+
+// ArrayOf creates the Array of given size with inner type.
+func ArrayOf(inner Type, size int) ArrayType {
+	return ArrayType{ArrayKind: Array, Type: inner, ArraySize: size}
+}
+
 var _ Type = ArrayType{}
 
 // ArrayType is the array or slice representing type.
@@ -25,11 +35,6 @@ func (a ArrayType) FullName() string {
 		return "[]" + a.Type.FullName()
 	}
 	return fmt.Sprintf("[%d]%s", a.ArraySize, a.Type.FullName())
-}
-
-// PkgPath implements Type interface.
-func (a ArrayType) PkgPath() PkgPath {
-	return builtInPkgPath
 }
 
 // Kind implements Type interface.

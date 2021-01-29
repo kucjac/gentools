@@ -6,14 +6,14 @@ import (
 
 func TestParsePackages(t *testing.T) {
 	// On test purpose try to parse this package.
-	pkgs, err := LoadPackages(&LoadConfig{Paths: []string{"."}, Verbose: true})
+	pkgs, err := LoadPackages(LoadConfig{Paths: []string{"."}, Verbose: true})
 	if err != nil {
 		t.Errorf("Parsing packages failed: %v", err)
 		return
 	}
 
 	// Get package reflection by it's identifier.
-	thisPkg, ok := pkgs.GetByIdentifier("astreflect")
+	thisPkg, ok := pkgs.PackageByIdentifier("astreflect")
 	if !ok {
 		t.Error("Package 'astreflect' not found by identifier")
 		return
@@ -67,10 +67,10 @@ func TestParsePackages(t *testing.T) {
 
 		switch i {
 		case 0:
-			expectedName = "PackagePath"
-			expectedType = "PkgPath"
-			expectedKind = Wrapper
-			expectedElemKind = String
+			expectedName = "Pkg"
+			expectedType = "*Package"
+			expectedKind = Ptr
+			expectedElemKind = Struct
 		case 1:
 			expectedName = "Comment"
 			expectedType = "string"

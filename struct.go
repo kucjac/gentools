@@ -7,11 +7,11 @@ var _ Type = (*StructType)(nil)
 
 // StructType is the struct type reflection.
 type StructType struct {
-	PackagePath PkgPath
-	Comment     string
-	TypeName    string
-	Fields      []StructField
-	Methods     []FunctionType
+	Pkg      *Package
+	Comment  string
+	TypeName string
+	Fields   []StructField
+	Methods  []FunctionType
 }
 
 // Implements checks if given structure implements provided interface.
@@ -21,8 +21,8 @@ func (s *StructType) Implements(interfaceType *InterfaceType, pointer bool) bool
 
 // Name implements Type interface.
 func (s *StructType) Name(identifier bool, packageContext string) string {
-	if identifier && packageContext != s.PackagePath.FullName() {
-		if i := s.PackagePath.Identifier(); i != "" {
+	if identifier && packageContext != s.Pkg.Path {
+		if i := s.Pkg.Identifier; i != "" {
 			return i + "." + s.TypeName
 		}
 	}
@@ -31,12 +31,12 @@ func (s *StructType) Name(identifier bool, packageContext string) string {
 
 // FullName implements Type interface.
 func (s *StructType) FullName() string {
-	return string(s.PackagePath) + "/" + s.TypeName
+	return s.Pkg.Path + "/" + s.TypeName
 }
 
 // PkgPath implements Type interface.
-func (s *StructType) PkgPath() PkgPath {
-	return s.PackagePath
+func (s *StructType) Package() *Package {
+	return s.Pkg
 }
 
 // Kind implements Type interface.
@@ -65,7 +65,7 @@ func (s *StructType) Equal(another Type) bool {
 	if !ok {
 		return false
 	}
-	return st.PackagePath == s.PackagePath && st.TypeName == s.TypeName
+	return st.Pkg == s.Pkg && st.TypeName == s.TypeName
 }
 
 func (s *StructType) getMethods() []FunctionType {

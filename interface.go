@@ -4,7 +4,7 @@ var _ Type = (*InterfaceType)(nil)
 
 // InterfaceType is the interface type model definition.
 type InterfaceType struct {
-	PackagePath   PkgPath
+	Pkg           *Package
 	Comment       string
 	InterfaceName string
 	Methods       []FunctionType
@@ -12,8 +12,8 @@ type InterfaceType struct {
 
 // Name implements Type interface.
 func (i InterfaceType) Name(identified bool, packageContext string) string {
-	if identified && packageContext != i.PackagePath.FullName() {
-		if identifier := i.PackagePath.Identifier(); identifier != "" {
+	if identified && packageContext != i.Pkg.Path {
+		if identifier := i.Pkg.Identifier; identifier != "" {
 			return identifier + "." + i.InterfaceName
 		}
 	}
@@ -22,12 +22,12 @@ func (i InterfaceType) Name(identified bool, packageContext string) string {
 
 // FullName implements Type interface.
 func (i InterfaceType) FullName() string {
-	return i.PackagePath.FullName() + "/" + i.InterfaceName
+	return i.Pkg.Path + "/" + i.InterfaceName
 }
 
-// PkgPath implements Type interface
-func (i InterfaceType) PkgPath() PkgPath {
-	return i.PackagePath
+// Package implements Type interface
+func (i InterfaceType) Package() *Package {
+	return i.Pkg
 }
 
 // Kind implements Type interface.
@@ -66,7 +66,7 @@ func (i InterfaceType) Equal(another Type) bool {
 	default:
 		return false
 	}
-	return it.PackagePath == i.PackagePath && it.InterfaceName == i.InterfaceName
+	return it.Pkg == i.Pkg && it.InterfaceName == i.InterfaceName
 }
 
 // Implements checks if the type t implements interface 'interfaceType'.

@@ -9,16 +9,14 @@ const (
 	builtInPkgPath = PkgPath(builtInPkgName)
 )
 
-var builtIn *builtInPackage
+var builtIn *Package
 
 func init() {
-	builtIn = &builtInPackage{
-		Package: &Package{
-			Path:            builtInPkgPath,
-			Identifier:      "",
-			Types:           map[string]Type{},
-			typesInProgress: map[string]Type{},
-		},
+	builtIn = &Package{
+		Path:            builtInPkgName,
+		Identifier:      "",
+		Types:           map[string]Type{},
+		typesInProgress: map[string]Type{},
 	}
 
 	for name, kind := range stdKindMap {
@@ -26,12 +24,11 @@ func init() {
 			TypeName: name,
 			StdKind:  kind,
 		}
-		builtIn.BuiltInTypes = append(builtIn.BuiltInTypes, st)
 		builtIn.Types[name] = &st
 		switch kind {
 		case Uint8:
 			wt := &WrappedType{
-				PackagePath: builtInPkgPath,
+				Pkg:         builtIn,
 				WrapperName: "byte",
 				Type:        &st,
 			}
@@ -39,7 +36,7 @@ func init() {
 			builtIn.Types["byte"] = wt
 		case Int32:
 			wt := &WrappedType{
-				PackagePath: builtInPkgPath,
+				Pkg:         builtIn,
 				WrapperName: "rune",
 				Type:        &st,
 			}
@@ -49,7 +46,7 @@ func init() {
 	}
 	stringType, _ := GetBuiltInType("string")
 	er := &InterfaceType{
-		PackagePath:   builtInPkgPath,
+		Pkg:           builtIn,
 		InterfaceName: "error",
 		Methods: []FunctionType{{
 			FuncName: "Error",
@@ -166,8 +163,8 @@ var kindNameMap = map[Kind]string{
 	Wrapper:       "Wrapper",
 }
 
-// IsKindBuiltIn checks if given name is a built in type.
-func IsKindBuiltIn(kindName string) (Kind, bool) {
+// IsBuiltIn checks if given name is a built in type.
+func IsBuiltIn(kindName string) (Kind, bool) {
 	k, ok := stdKindMap[kindName]
 	return k, ok
 }
@@ -202,11 +199,6 @@ func (b BuiltInType) Name(_ bool, _ string) string {
 // FullName implements Type interface.
 func (b BuiltInType) FullName() string {
 	return b.TypeName
-}
-
-// PkgPath implements Type interface.
-func (b BuiltInType) PkgPath() PkgPath {
-	return builtInPkgPath
 }
 
 // Kind implements Type interface.
@@ -250,9 +242,4 @@ func (b BuiltInType) Zero(_ bool, _ string) string {
 	default:
 		return "nil"
 	}
-}
-
-type builtInPackage struct {
-	*Package
-	BuiltInTypes []BuiltInType
 }

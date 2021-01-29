@@ -8,19 +8,19 @@ var _ Type = FunctionType{}
 
 // FunctionType is the function type used for getting.
 type FunctionType struct {
-	Comment     string
-	PackagePath PkgPath
-	Receiver    *Receiver
-	FuncName    string
-	In          []FuncParam
-	Out         []FuncParam
-	Variadic    bool
+	Comment  string
+	Pkg      *Package
+	Receiver *Receiver
+	FuncName string
+	In       []FuncParam
+	Out      []FuncParam
+	Variadic bool
 }
 
 // Name implements Type interface.
 func (f FunctionType) Name(identified bool, packageContext string) string {
-	if identified && packageContext != f.PackagePath.FullName() {
-		if i := f.PackagePath.Identifier(); i != "" {
+	if identified && packageContext != f.Pkg.Path {
+		if i := f.Pkg.Identifier; i != "" {
 			return i + "." + f.FuncName
 		}
 	}
@@ -29,12 +29,12 @@ func (f FunctionType) Name(identified bool, packageContext string) string {
 
 // FullName implements Type interface.
 func (f FunctionType) FullName() string {
-	return string(f.PackagePath) + "/" + f.FuncName
+	return f.Pkg.Path + "/" + f.FuncName
 }
 
-// PkgPath implements Type interface.
-func (f FunctionType) PkgPath() PkgPath {
-	return f.PackagePath
+// Package implements Type interface.
+func (f FunctionType) Package() *Package {
+	return f.Pkg
 }
 
 // Kind implements Type interface.
@@ -74,7 +74,7 @@ func (f FunctionType) String() string {
 }
 
 // Zero implements Type interface.
-func (f FunctionType) Zero(identified bool, packageContext string) string {
+func (f FunctionType) Zero(_ bool, _ string) string {
 	return "nil"
 }
 
@@ -92,7 +92,7 @@ func (f FunctionType) Equal(another Type) bool {
 	if (f.Receiver == nil && ft.Receiver != nil) || (ft.Receiver == nil && f.Receiver != nil) {
 		return false
 	}
-	return f.PackagePath == ft.PackagePath && f.FuncName == ft.FuncName
+	return f.Pkg == ft.Pkg && f.FuncName == ft.FuncName
 }
 
 // FuncParam is the input/output parameter of functions and methods.

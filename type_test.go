@@ -5,7 +5,7 @@ import (
 )
 
 func TestZero(t *testing.T) {
-	pkgs, err := LoadPackages(&LoadConfig{
+	pkgs, err := LoadPackages(LoadConfig{
 		Paths:      []string{"."},
 		PkgNames:   nil,
 		BuildFlags: nil,
@@ -24,7 +24,7 @@ func TestZero(t *testing.T) {
 		t.Error("TypeOf find 'astreflect.StructType' failed")
 	}
 
-	thisPkg, ok := pkgs.GetByPath("github.com/kucjac/astreflect")
+	thisPkg, ok := pkgs.PackageByPath("github.com/kucjac/astreflect")
 	if !ok {
 		t.Error("This package not found by path")
 		return

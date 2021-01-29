@@ -1,5 +1,10 @@
 package astreflect
 
+// PointerTo creates a pointer of given type.
+func PointerTo(pointsTo Type) Type {
+	return PointerType{PointedType: pointsTo}
+}
+
 var _ Type = PointerType{}
 
 // PointerType is the type implementation that defines pointer type.
@@ -15,11 +20,6 @@ func (p PointerType) Name(identified bool, pkgContext string) string {
 // FullName implements Type interface.
 func (p PointerType) FullName() string {
 	return "*" + p.PointedType.FullName()
-}
-
-// PkgPath implements Type interface.
-func (p PointerType) PkgPath() PkgPath {
-	return p.PointedType.PkgPath()
 }
 
 // Kind implements Type interface.

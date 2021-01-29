@@ -4,6 +4,11 @@ import (
 	"strings"
 )
 
+// ChanOf creates the channel of given type with given direction.
+func ChanOf(dir ChanDir, chanType Type) ChanType {
+	return ChanType{Type: chanType, Dir: dir}
+}
+
 var _ Type = (*ChanType)(nil)
 
 // ChanType is the type representing channel.
@@ -40,11 +45,6 @@ func (c ChanType) FullName() string {
 	sb.WriteRune(' ')
 	sb.WriteString(c.Type.FullName())
 	return sb.String()
-}
-
-// PkgPath implements Type interface.
-func (c ChanType) PkgPath() PkgPath {
-	return builtInPkgPath
 }
 
 // Kind gets the kind of the type.

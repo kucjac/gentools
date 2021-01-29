@@ -2,6 +2,11 @@ package astreflect
 
 import "fmt"
 
+// MapOf creates a map of given key, value types.
+func MapOf(key, value Type) MapType {
+	return MapType{Key: key, Value: value}
+}
+
 var _ Type = (*MapType)(nil)
 
 // MapType is the type wrapper for the standar key value map type.
@@ -18,11 +23,6 @@ func (m MapType) Name(identified bool, packageContext string) string {
 // FullName implements Type interface.
 func (m MapType) FullName() string {
 	return fmt.Sprintf("map[%s]%s", m.Key.FullName(), m.Value.FullName())
-}
-
-// PkgPath implements Type interface.
-func (m MapType) PkgPath() PkgPath {
-	return builtInPkgPath
 }
 
 // Kind implements Type interface.

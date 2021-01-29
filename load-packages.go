@@ -29,40 +29,52 @@ type LoadConfig struct {
 }
 
 // LoadPackages parses Golang packages using AST.
-func LoadPackages(cfg *LoadConfig) (PackageMap, error) {
-	pkgNames, err := getPackageNames(cfg)
+func LoadPackages(cfg LoadConfig) (PackageMap, error) {
+	pkgNames, err := getPackageNames(&cfg)
 	if err != nil {
 		return nil, err
 	}
-	pkgNames = resolveLoadedPackages(pkgNames)
+
+	p := &packageMap{pkgMap: PackageMap{}}
+	pkgs, err := p.loadPackages(&cfg, pkgNames...)
+	if err != nil {
+		return nil, err
+	}
+	if len(pkgs) == 0 {
+		return nil, errors.New("no packages found")
+	}
+	p.parsePackages(&cfg, pkgs...)
+	return p.pkgMap, nil
+}
+
+// LoadPackages updates the packages in the given PackageMap.
+// The function would get and parse only packages that doesn't currently exists in given map.
+func (p PackageMap) LoadPackages(cfg LoadConfig) error {
+	pkgNames, err := getPackageNames(&cfg)
+	if err != nil {
+		return err
+	}
+	pm := &packageMap{pkgMap: p}
+	pkgNames = pm.resolveLoadedPackages(pkgNames)
 	switch len(pkgNames) {
 	case 0:
 		if cfg.Verbose {
 			fmt.Println("all packages from the input already loaded")
 		}
 	default:
-		pkgs, err := loadPackages(cfg, pkgNames...)
+		pkgs, err := pm.loadPackages(&cfg, pkgNames...)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if len(pkgs) == 0 {
-			return nil, errors.New("no packages found")
+			return errors.New("no packages found")
 		}
-		parsePackages(cfg, pkgs...)
+		pm.parsePackages(&cfg, pkgs...)
 	}
-	return getPackageMap(), nil
+	return nil
 }
 
-// GetPackages gets the package map.
-func GetPackages() PackageMap {
-	return getPackageMap()
-}
-
-func getPackageMap() PackageMap {
-	return pkgMap.pkgMap
-}
-
-func loadPackages(cfg *LoadConfig, pkgNames ...string) ([]*packages.Package, error) {
+func (p *packageMap) loadPackages(cfg *LoadConfig, pkgNames ...string) ([]*packages.Package, error) {
 	now := time.Now()
 	pkgCfg := &packages.Config{
 		Mode:       packages.NeedName | packages.NeedDeps | packages.NeedImports | packages.NeedTypes,
@@ -102,9 +114,9 @@ func getPackageNames(cfg *LoadConfig) (pkgNames []string, err error) {
 	return pkgNames, nil
 }
 
-func resolveLoadedPackages(pkgNames []string) (result []string) {
+func (p *packageMap) resolveLoadedPackages(pkgNames []string) (result []string) {
 	for _, pkgName := range pkgNames {
-		_, ok := pkgMap.read(pkgName)
+		_, ok := p.read(pkgName)
 		if !ok {
 			result = append(result, pkgName)
 		}
@@ -112,12 +124,13 @@ func resolveLoadedPackages(pkgNames []string) (result []string) {
 	return result
 }
 
-func parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package) {
+func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package) {
 	now := time.Now()
 
 	var pkgs []*packages.Package
 	for _, pkg := range newPkgs {
-		if _, ok := pkgMap.read(pkg.PkgPath); !ok {
+		// Check if the package is not already scanned.
+		if _, ok := p.read(pkg.PkgPath); !ok {
 			pkgs = append(pkgs, pkg)
 		}
 	}
@@ -139,9 +152,10 @@ func parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package) {
 	sort.Slice(pkgList, func(i, j int) bool { return pkgList[i].importNo < pkgList[j].importNo })
 	initWg.Add(len(packageMap))
 	finishGroup.Add(len(packageMap))
+
 	var rootPkgs []*rootPackage
 	for _, importedPkg := range pkgList {
-		rootPkg := &rootPackage{typesPkg: importedPkg.pkg}
+		rootPkg := &rootPackage{typesPkg: importedPkg.pkg, pkgMap: p}
 		rootPkgs = append(rootPkgs, rootPkg)
 		go rootPkg.parseTypePkg(initWg, finishGroup)
 	}
@@ -150,6 +164,7 @@ func parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package) {
 	if cfg.Verbose {
 		fmt.Printf("astreflect packages parsed in %s\n", time.Since(now))
 	}
+
 }
 
 type importedPackage struct {
@@ -170,10 +185,11 @@ func getAllImports(pkg *types.Package, imports map[string]*importedPackage) {
 type rootPackage struct {
 	typesPkg *types.Package
 	refPkg   *Package
+	pkgMap   *packageMap
 }
 
 func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
-	p := newPackage(r.typesPkg.Path(), r.typesPkg.Name())
+	p := r.pkgMap.newPackage(r.typesPkg.Path(), r.typesPkg.Name())
 	r.refPkg = p
 	r.scaffoldPackageObjects()
 	initWg.Done()
@@ -230,21 +246,21 @@ func (r *rootPackage) scaffoldPackageObjects() {
 			switch t := ot.Underlying().(type) {
 			case *types.Interface:
 				it := &InterfaceType{
-					PackagePath:   r.refPkg.Path,
+					Pkg:           r.refPkg,
 					InterfaceName: name,
 					Methods:       make([]FunctionType, t.NumMethods()),
 				}
 				r.refPkg.setInProgressType(name, it)
 			case *types.Struct:
 				st := &StructType{
-					PackagePath: r.refPkg.Path,
-					TypeName:    name,
-					Fields:      make([]StructField, t.NumFields()),
+					Pkg:      r.refPkg,
+					TypeName: name,
+					Fields:   make([]StructField, t.NumFields()),
 				}
 				r.refPkg.setInProgressType(name, st)
 			default:
 				wt := &WrappedType{
-					PackagePath: r.refPkg.Path,
+					Pkg:         r.refPkg,
 					WrapperName: name,
 				}
 				r.refPkg.setInProgressType(name, wt)
@@ -255,8 +271,8 @@ func (r *rootPackage) scaffoldPackageObjects() {
 				continue
 			}
 			fT := &FunctionType{
-				PackagePath: r.refPkg.Path,
-				FuncName:    name,
+				Pkg:      r.refPkg,
+				FuncName: name,
 			}
 			r.refPkg.setInProgressType(name, fT)
 		}
@@ -287,12 +303,12 @@ func (r *rootPackage) finishWrappedType(underlying types.Type, name string, wt *
 	return true
 }
 
-func getNamedType(et *types.Named) (Type, bool) {
+func (r *rootPackage) getNamedType(et *types.Named) (Type, bool) {
 	if et.Obj().Pkg() == nil {
 		t, ok := GetBuiltInType(et.Obj().Name())
 		return t, ok
 	}
-	p, ok := GetPackage(et.Obj().Pkg().Path())
+	p, ok := r.pkgMap.read(et.Obj().Pkg().Path())
 	if !ok {
 		return nil, ok
 	}
@@ -302,7 +318,7 @@ func getNamedType(et *types.Named) (Type, bool) {
 func (r *rootPackage) dereferenceType(p *Package, tp types.Type) (Type, bool) {
 	switch et := tp.(type) {
 	case *types.Named:
-		return getNamedType(et)
+		return r.getNamedType(et)
 	case *types.Struct:
 		return r.parseStructType(p, et)
 	case *types.Interface:
@@ -354,7 +370,7 @@ func (r *rootPackage) dereferenceType(p *Package, tp types.Type) (Type, bool) {
 		}
 		return &ChanType{Type: st, Dir: ChanDir(et.Dir())}, true
 	case *types.Signature:
-		ft := &FunctionType{PackagePath: p.Path}
+		ft := &FunctionType{Pkg: p}
 		if !r.parseSignatureType(p, et, ft, true) {
 			return nil, false
 		}
@@ -377,7 +393,7 @@ func (r *rootPackage) finishNamedInterfaceType(named *types.Named, intf *Interfa
 }
 
 func (r *rootPackage) parseInterfaceType(p *Package, it *types.Interface) (*InterfaceType, bool) {
-	intf := &InterfaceType{PackagePath: p.Path}
+	intf := &InterfaceType{Pkg: p}
 	if it.NumMethods() != 0 {
 		intf.Methods = make([]FunctionType, it.NumMethods())
 		if ok := r.parseInterfaceMethods(p, it, intf); !ok {
@@ -420,7 +436,7 @@ func (r *rootPackage) finishNamedStructType(t *StructType, named *types.Named) b
 }
 
 func (r *rootPackage) parseStructType(p *Package, ot *types.Struct) (*StructType, bool) {
-	t := &StructType{PackagePath: p.Path}
+	t := &StructType{Pkg: p}
 
 	if ot.NumFields() != 0 {
 		t.Fields = make([]StructField, ot.NumFields())
@@ -463,7 +479,7 @@ func (r *rootPackage) parseMethod(p *Package, named astMethoder, i int, needRece
 		fmt.Printf("method type is not a signature: %+v\n", m.Type())
 		return FunctionType{}, false
 	}
-	ft := FunctionType{FuncName: m.Name(), PackagePath: p.Path}
+	ft := FunctionType{FuncName: m.Name(), Pkg: p}
 	if ok = r.parseSignatureType(p, s, &ft, needReceiver); !ok {
 		return FunctionType{}, false
 	}
