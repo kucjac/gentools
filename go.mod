@@ -1,4 +1,4 @@
-module github.com/kucjac/astreflect
+module github.com/kucjac/gentools
 
 go 1.15
 

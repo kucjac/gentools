@@ -1,24 +1,24 @@
-package astreflect
+package types
 
 import (
 	"strings"
 )
 
 // ChanOf creates the channel of given type with given direction.
-func ChanOf(dir ChanDir, chanType Type) *ChanType {
-	return &ChanType{Type: chanType, Dir: dir}
+func ChanOf(dir ChanDir, chanType Type) *Chan {
+	return &Chan{Type: chanType, Dir: dir}
 }
 
-var _ Type = (*ChanType)(nil)
+var _ Type = (*Chan)(nil)
 
-// ChanType is the type representing channel.
-type ChanType struct {
+// Chan is the type representing channel.
+type Chan struct {
 	Type Type
 	Dir  ChanDir
 }
 
 // Name implements Type interface.
-func (c ChanType) Name(identified bool, packageContext string) string {
+func (c *Chan) Name(identified bool, packageContext string) string {
 	sb := strings.Builder{}
 	if c.Dir == SendOnly {
 		sb.WriteString("<-")
@@ -33,7 +33,7 @@ func (c ChanType) Name(identified bool, packageContext string) string {
 }
 
 // FullName implements Type interface.
-func (c ChanType) FullName() string {
+func (c *Chan) FullName() string {
 	sb := strings.Builder{}
 	if c.Dir == SendOnly {
 		sb.WriteString("<-")
@@ -48,34 +48,29 @@ func (c ChanType) FullName() string {
 }
 
 // Kind gets the kind of the type.
-func (c ChanType) Kind() Kind {
-	return Chan
+func (c *Chan) Kind() Kind {
+	return KindChan
 }
 
 // Elem gets the channel element type.
-func (c ChanType) Elem() Type {
+func (c *Chan) Elem() Type {
 	return c.Type
 }
 
-// String implements fmt.Stringer interface.
-func (c ChanType) String() string {
+// KindString implements fmt.Stringer interface.
+func (c Chan) String() string {
 	return c.Name(true, "")
 }
 
 // Zero implements Type interface.
-func (c ChanType) Zero(_ bool, _ string) string {
+func (c *Chan) Zero(_ bool, _ string) string {
 	return "nil"
 }
 
 // Equal implements Type interface.
-func (c ChanType) Equal(another Type) bool {
-	var ct ChanType
-	switch t := another.(type) {
-	case *ChanType:
-		ct = *t
-	case ChanType:
-		ct = t
-	default:
+func (c *Chan) Equal(another Type) bool {
+	ct, ok := another.(*Chan)
+	if !ok {
 		return false
 	}
 	if c.Dir != ct.Dir {

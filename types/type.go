@@ -1,4 +1,4 @@
-package astreflect
+package types
 
 // Type is the interface used by all golang type reflections in package.
 type Type interface {
@@ -17,7 +17,7 @@ type Type interface {
 	Kind() Kind
 	// Elem gets the wrapped, pointed, base of
 	Elem() Type
-	// String gets the full name string representation of given type.
+	// KindString gets the full name string representation of given type.
 	String() string
 	// Zero gets zero value string of given type.
 	Zero(identified bool, packageContext string) string
@@ -26,7 +26,7 @@ type Type interface {
 }
 
 // Packager is the interface that allows to get Type packages.
-// Only the Types that contains the name stores the Package i.e.: StructType, InterfaceType, WrappedType, FunctionType.
+// Only the Types that contains the name stores the Package i.e.: Struct, Interface, Alias, Function.
 type Packager interface {
 	// Package gets the Package for given type.
 	Package() *Package

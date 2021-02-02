@@ -1,9 +1,9 @@
-package astreflect
+package parser
 
 import (
 	"errors"
 	"fmt"
-	"go/types"
+	gotypes "go/types"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,6 +14,8 @@ import (
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/tools/go/packages"
+
+	"github.com/kucjac/gentools/types"
 )
 
 // LoadConfig contains configuration used while loading packages.
@@ -29,13 +31,13 @@ type LoadConfig struct {
 }
 
 // LoadPackages parses Golang packages using AST.
-func LoadPackages(cfg LoadConfig) (PackageMap, error) {
+func LoadPackages(cfg LoadConfig) (types.PackageMap, error) {
 	pkgNames, err := getPackageNames(&cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	p := &packageMap{pkgMap: PackageMap{}}
+	p := &packageMap{pkgMap: types.PackageMap{}}
 	pkgs, err := p.loadPackages(&cfg, pkgNames...)
 	if err != nil {
 		return nil, err
@@ -47,9 +49,9 @@ func LoadPackages(cfg LoadConfig) (PackageMap, error) {
 	return p.pkgMap, nil
 }
 
-// LoadPackages updates the packages in the given PackageMap.
+// UpdatePackages updates the packages in the given PackageMap.
 // The function would get and parse only packages that doesn't currently exists in given map.
-func (p PackageMap) LoadPackages(cfg LoadConfig) error {
+func UpdatePackages(p types.PackageMap, cfg LoadConfig) error {
 	pkgNames, err := getPackageNames(&cfg)
 	if err != nil {
 		return err
@@ -155,7 +157,7 @@ func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package
 
 	var rootPkgs []*rootPackage
 	for _, importedPkg := range pkgList {
-		rootPkg := &rootPackage{typesPkg: importedPkg.pkg, pkgMap: p}
+		rootPkg := &rootPackage{typesPkg: importedPkg.pkg, pkgMap: p, loadConfig: cfg, typesInProgress: map[string]types.Type{}}
 		rootPkgs = append(rootPkgs, rootPkg)
 		go rootPkg.parseTypePkg(initWg, finishGroup)
 	}
@@ -168,11 +170,11 @@ func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package
 }
 
 type importedPackage struct {
-	pkg      *types.Package
+	pkg      *gotypes.Package
 	importNo int
 }
 
-func getAllImports(pkg *types.Package, imports map[string]*importedPackage) {
+func getAllImports(pkg *gotypes.Package, imports map[string]*importedPackage) {
 	imports[pkg.Path()] = &importedPackage{pkg: pkg, importNo: len(pkg.Imports())}
 	for _, sub := range pkg.Imports() {
 		if _, ok := imports[sub.Path()]; ok {
@@ -183,9 +185,17 @@ func getAllImports(pkg *types.Package, imports map[string]*importedPackage) {
 }
 
 type rootPackage struct {
-	typesPkg *types.Package
-	refPkg   *Package
-	pkgMap   *packageMap
+	typesPkg        *gotypes.Package
+	refPkg          *types.Package
+	pkgMap          *packageMap
+	loadConfig      *LoadConfig
+	declNames       []string
+	typesInProgress map[string]types.Type
+}
+
+func (r *rootPackage) setTypeInProgress(name string, tp types.Type) {
+	r.typesInProgress[name] = tp
+	r.refPkg.SetNamedType(name, tp)
 }
 
 func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
@@ -195,15 +205,16 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 	initWg.Done()
 	initWg.Wait()
 
-	typesScope := r.typesPkg.Scope()
+	s := r.typesPkg.Scope()
+	typesScope := s
 	type tuple struct {
 		name string
-		tp   Type
+		tp   types.Type
 	}
 
-	inProgress := make([]tuple, len(p.typesInProgress))
+	inProgress := make([]tuple, len(r.typesInProgress))
 	var i int
-	for name, tp := range p.typesInProgress {
+	for name, tp := range r.typesInProgress {
 		inProgress[i] = tuple{name, tp}
 		i++
 	}
@@ -211,21 +222,51 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 		name, tt := tpl.name, tpl.tp
 		tp := typesScope.Lookup(name)
 		switch t := tp.Type().(type) {
-		case *types.Named:
+		case *gotypes.Named:
 			if ok := r.finishNamedType(t, tt); !ok {
+				if r.loadConfig.Verbose {
+					fmt.Printf("package: %s, type: %s not mapped\n", p.Path, t.Obj().Name())
+				}
 				continue
 			}
-		case *types.Signature:
-			ok := r.finishNamedFunc(name, t, tt)
+		case *gotypes.Signature:
+			ok := r.finishNamedFunc(t, tt)
 			if !ok {
 				continue
 			}
 		default:
-			wt, ok := tt.(*WrappedType)
+			wt, ok := tt.(*types.Alias)
 			if !ok {
 				continue
 			}
 			r.finishWrappedType(t.Underlying(), name, wt)
+		}
+	}
+	for _, name := range r.declNames {
+		obj := s.Lookup(name)
+		switch ot := obj.(type) {
+		case *gotypes.Const:
+			declType, ok := r.dereferenceType(p, ot.Type())
+			if !ok {
+				continue
+			}
+			if err := p.NewConstant(ot.Name(), declType); err != nil {
+				if r.loadConfig.Verbose {
+					fmt.Println(err)
+				}
+			}
+		case *gotypes.Var:
+			declType, ok := r.dereferenceType(p, ot.Type())
+			if !ok {
+				continue
+			}
+			if err := p.NewVariable(ot.Name(), declType); err != nil {
+				if r.loadConfig.Verbose {
+					fmt.Println(err)
+				}
+			}
+		default:
+			continue
 		}
 	}
 	fg.Done()
@@ -236,76 +277,78 @@ func (r *rootPackage) scaffoldPackageObjects() {
 	for _, name := range s.Names() {
 		obj := s.Lookup(name)
 		switch obj.(type) {
-		case *types.TypeName, *types.Func:
+		case *gotypes.TypeName, *gotypes.Func:
+		case *gotypes.Const, *gotypes.Var:
+			r.declNames = append(r.declNames, name)
+			continue
 		default:
 			continue
 		}
 
 		switch ot := obj.Type().(type) {
-		case *types.Named:
+		case *gotypes.Named:
 			switch t := ot.Underlying().(type) {
-			case *types.Interface:
-				it := &InterfaceType{
+			case *gotypes.Interface:
+				it := &types.Interface{
 					Pkg:           r.refPkg,
 					InterfaceName: name,
-					Methods:       make([]FunctionType, t.NumMethods()),
+					Methods:       make([]types.Function, t.NumMethods()),
 				}
-				r.refPkg.setInProgressType(name, it)
-			case *types.Struct:
-				st := &StructType{
+				r.setTypeInProgress(name, it)
+			case *gotypes.Struct:
+				st := &types.Struct{
 					Pkg:      r.refPkg,
 					TypeName: name,
-					Fields:   make([]StructField, t.NumFields()),
+					Fields:   make([]types.StructField, t.NumFields()),
 				}
-				r.refPkg.setInProgressType(name, st)
+				r.setTypeInProgress(name, st)
 			default:
-				wt := &WrappedType{
-					Pkg:         r.refPkg,
-					WrapperName: name,
+				wt := &types.Alias{
+					Pkg:       r.refPkg,
+					AliasName: name,
 				}
-				r.refPkg.setInProgressType(name, wt)
+				r.setTypeInProgress(name, wt)
 			}
-		case *types.Signature:
+		case *gotypes.Signature:
 			if ot.Recv() != nil {
 				// This is a method which should not be extracted as function.
 				continue
 			}
-			fT := &FunctionType{
+			fT := &types.Function{
 				Pkg:      r.refPkg,
 				FuncName: name,
 			}
-			r.refPkg.setInProgressType(name, fT)
+			r.setTypeInProgress(name, fT)
 		}
 	}
 }
 
-func (r *rootPackage) finishNamedType(named *types.Named, t Type) bool {
+func (r *rootPackage) finishNamedType(named *gotypes.Named, t types.Type) bool {
 	switch ot := t.(type) {
-	case *StructType:
+	case *types.Struct:
 		return r.finishNamedStructType(ot, named)
-	case *InterfaceType:
+	case *types.Interface:
 		return r.finishNamedInterfaceType(named, ot)
-	case *WrappedType:
+	case *types.Alias:
 		return r.finishWrappedType(named.Underlying(), named.Obj().Name(), ot)
 	default:
 		panic("invalid type")
 	}
 }
 
-func (r *rootPackage) finishWrappedType(underlying types.Type, name string, wt *WrappedType) bool {
+func (r *rootPackage) finishWrappedType(underlying gotypes.Type, name string, wt *types.Alias) bool {
 	tp, ok := r.dereferenceType(r.refPkg, underlying)
 	if !ok {
 		fmt.Printf("Finishing WrappedType: %s failed: %s\n", name, underlying)
 		return false
 	}
 	wt.Type = tp
-	r.refPkg.markTypeDone(name)
 	return true
 }
 
-func (r *rootPackage) getNamedType(et *types.Named) (Type, bool) {
+func (r *rootPackage) getNamedType(et *gotypes.Named) (types.Type, bool) {
 	if et.Obj().Pkg() == nil {
-		t, ok := GetBuiltInType(et.Obj().Name())
+		t, ok := types.GetBuiltInType(et.Obj().Name())
 		return t, ok
 	}
 	p, ok := r.pkgMap.read(et.Obj().Pkg().Path())
@@ -315,32 +358,32 @@ func (r *rootPackage) getNamedType(et *types.Named) (Type, bool) {
 	return p.GetType(et.Obj().Name())
 }
 
-func (r *rootPackage) dereferenceType(p *Package, tp types.Type) (Type, bool) {
+func (r *rootPackage) dereferenceType(p *types.Package, tp gotypes.Type) (types.Type, bool) {
 	switch et := tp.(type) {
-	case *types.Named:
+	case *gotypes.Named:
 		return r.getNamedType(et)
-	case *types.Struct:
+	case *gotypes.Struct:
 		return r.parseStructType(p, et)
-	case *types.Interface:
+	case *gotypes.Interface:
 		return r.parseInterfaceType(p, et)
-	case *types.Basic:
-		return GetBuiltInType(et.Name())
-	case *types.Slice:
+	case *gotypes.Basic:
+		return types.GetBuiltInType(et.Name())
+	case *gotypes.Slice:
 		st, ok := r.dereferenceType(p, et.Elem())
 		if !ok {
 			return nil, false
 		}
-		return &ArrayType{
-			ArrayKind: Slice,
+		return &types.Array{
+			ArrayKind: types.KindSlice,
 			Type:      st,
 		}, true
-	case *types.Pointer:
+	case *gotypes.Pointer:
 		st, ok := r.dereferenceType(p, et.Elem())
 		if !ok {
 			return nil, ok
 		}
-		return &PointerType{PointedType: st}, true
-	case *types.Map:
+		return &types.Pointer{PointedType: st}, true
+	case *gotypes.Map:
 		kt, ok := r.dereferenceType(p, et.Key())
 		if !ok {
 			return nil, false
@@ -349,28 +392,28 @@ func (r *rootPackage) dereferenceType(p *Package, tp types.Type) (Type, bool) {
 		if !ok {
 			return nil, false
 		}
-		return &MapType{
+		return &types.Map{
 			Key:   kt,
 			Value: vt,
 		}, true
-	case *types.Array:
+	case *gotypes.Array:
 		st, ok := r.dereferenceType(p, et.Elem())
 		if !ok {
 			return nil, ok
 		}
-		return &ArrayType{
-			ArrayKind: Array,
+		return &types.Array{
+			ArrayKind: types.KindArray,
 			Type:      st,
 			ArraySize: int(et.Len()),
 		}, true
-	case *types.Chan:
+	case *gotypes.Chan:
 		st, ok := r.dereferenceType(p, et.Elem())
 		if !ok {
 			return nil, ok
 		}
-		return &ChanType{Type: st, Dir: ChanDir(et.Dir())}, true
-	case *types.Signature:
-		ft := &FunctionType{Pkg: p}
+		return &types.Chan{Type: st, Dir: types.ChanDir(et.Dir())}, true
+	case *gotypes.Signature:
+		ft := &types.Function{Pkg: p}
 		if !r.parseSignatureType(p, et, ft, true) {
 			return nil, false
 		}
@@ -381,21 +424,20 @@ func (r *rootPackage) dereferenceType(p *Package, tp types.Type) (Type, bool) {
 	}
 }
 
-func (r *rootPackage) finishNamedInterfaceType(named *types.Named, intf *InterfaceType) bool {
+func (r *rootPackage) finishNamedInterfaceType(named *gotypes.Named, intf *types.Interface) bool {
 	p := r.refPkg
-	it, ok := named.Underlying().(*types.Interface)
+	it, ok := named.Underlying().(*gotypes.Interface)
 	if !ok {
 		return false
 	}
 	r.parseInterfaceMethods(p, it, intf)
-	p.markTypeDone(named.Obj().Name())
 	return true
 }
 
-func (r *rootPackage) parseInterfaceType(p *Package, it *types.Interface) (*InterfaceType, bool) {
-	intf := &InterfaceType{Pkg: p}
+func (r *rootPackage) parseInterfaceType(p *types.Package, it *gotypes.Interface) (*types.Interface, bool) {
+	intf := &types.Interface{Pkg: p}
 	if it.NumMethods() != 0 {
-		intf.Methods = make([]FunctionType, it.NumMethods())
+		intf.Methods = make([]types.Function, it.NumMethods())
 		if ok := r.parseInterfaceMethods(p, it, intf); !ok {
 			return nil, false
 		}
@@ -403,7 +445,7 @@ func (r *rootPackage) parseInterfaceType(p *Package, it *types.Interface) (*Inte
 	return intf, true
 }
 
-func (r *rootPackage) parseInterfaceMethods(p *Package, it *types.Interface, intf *InterfaceType) bool {
+func (r *rootPackage) parseInterfaceMethods(p *types.Package, it *gotypes.Interface, intf *types.Interface) bool {
 	for i := 0; i < it.NumMethods(); i++ {
 		xm, ok := r.parseMethod(p, it, i, false)
 		if !ok {
@@ -416,9 +458,9 @@ func (r *rootPackage) parseInterfaceMethods(p *Package, it *types.Interface, int
 	return true
 }
 
-func (r *rootPackage) finishNamedStructType(t *StructType, named *types.Named) bool {
+func (r *rootPackage) finishNamedStructType(t *types.Struct, named *gotypes.Named) bool {
 	p := r.refPkg
-	r.parseStructFields(p, named.Underlying().(*types.Struct), t)
+	r.parseStructFields(p, named.Underlying().(*gotypes.Struct), t)
 
 	t.TypeName = named.Obj().Name()
 	// Map methods.
@@ -431,15 +473,14 @@ func (r *rootPackage) finishNamedStructType(t *StructType, named *types.Named) b
 	}
 	sort.Slice(t.Methods, func(i, j int) bool { return t.Methods[i].FuncName < t.Methods[j].FuncName })
 
-	p.markTypeDone(named.Obj().Name())
 	return true
 }
 
-func (r *rootPackage) parseStructType(p *Package, ot *types.Struct) (*StructType, bool) {
-	t := &StructType{Pkg: p}
+func (r *rootPackage) parseStructType(p *types.Package, ot *gotypes.Struct) (*types.Struct, bool) {
+	t := &types.Struct{Pkg: p}
 
 	if ot.NumFields() != 0 {
-		t.Fields = make([]StructField, ot.NumFields())
+		t.Fields = make([]types.StructField, ot.NumFields())
 		if ok := r.parseStructFields(p, ot, t); !ok {
 			return nil, false
 		}
@@ -447,16 +488,16 @@ func (r *rootPackage) parseStructType(p *Package, ot *types.Struct) (*StructType
 	return t, true
 }
 
-func (r *rootPackage) parseStructFields(p *Package, ot *types.Struct, t *StructType) bool {
+func (r *rootPackage) parseStructFields(p *types.Package, ot *gotypes.Struct, t *types.Struct) bool {
 	for i := 0; i < ot.NumFields(); i++ {
 		f := ot.Field(i)
 		ft, ok := r.dereferenceType(p, f.Type())
 		if !ok {
 			return ok
 		}
-		sField := StructField{
+		sField := types.StructField{
 			Name:      f.Name(),
-			Tag:       StructTag(ot.Tag(i)),
+			Tag:       types.StructTag(ot.Tag(i)),
 			Type:      ft,
 			Index:     []int{i},
 			Embedded:  f.Embedded(),
@@ -468,35 +509,35 @@ func (r *rootPackage) parseStructFields(p *Package, ot *types.Struct, t *StructT
 }
 
 type astMethoder interface {
-	Method(int) *types.Func
+	Method(int) *gotypes.Func
 }
 
-func (r *rootPackage) parseMethod(p *Package, named astMethoder, i int, needReceiver bool) (FunctionType, bool) {
+func (r *rootPackage) parseMethod(p *types.Package, named astMethoder, i int, needReceiver bool) (types.Function, bool) {
 	m := named.Method(i)
 
-	s, ok := m.Type().(*types.Signature)
+	s, ok := m.Type().(*gotypes.Signature)
 	if !ok {
 		fmt.Printf("method type is not a signature: %+v\n", m.Type())
-		return FunctionType{}, false
+		return types.Function{}, false
 	}
-	ft := FunctionType{FuncName: m.Name(), Pkg: p}
+	ft := types.Function{FuncName: m.Name(), Pkg: p}
 	if ok = r.parseSignatureType(p, s, &ft, needReceiver); !ok {
-		return FunctionType{}, false
+		return types.Function{}, false
 	}
 	return ft, true
 }
 
-func (r *rootPackage) parseSignatureType(p *Package, s *types.Signature, xm *FunctionType, needReceiver bool) bool {
+func (r *rootPackage) parseSignatureType(p *types.Package, s *gotypes.Signature, xm *types.Function, needReceiver bool) bool {
 	xm.Variadic = s.Variadic()
 	if needReceiver && s.Recv() != nil {
-		xm.Receiver = &Receiver{Name: s.Recv().Name()}
+		xm.Receiver = &types.Receiver{Name: s.Recv().Name()}
 		xm.Receiver.Type, _ = r.dereferenceType(p, s.Recv().Type())
 	}
 	if params := s.Params(); params != nil {
-		xm.In = make([]FuncParam, params.Len())
+		xm.In = make([]types.FuncParam, params.Len())
 		for j := 0; j < params.Len(); j++ {
 			pm := params.At(j)
-			in := FuncParam{Name: pm.Name()}
+			in := types.FuncParam{Name: pm.Name()}
 			pt, ok := r.dereferenceType(p, pm.Type())
 			if !ok {
 				return false
@@ -507,10 +548,10 @@ func (r *rootPackage) parseSignatureType(p *Package, s *types.Signature, xm *Fun
 	}
 
 	if results := s.Results(); results != nil {
-		xm.Out = make([]FuncParam, results.Len())
+		xm.Out = make([]types.FuncParam, results.Len())
 		for j := 0; j < results.Len(); j++ {
 			pm := results.At(j)
-			out := FuncParam{Name: pm.Name()}
+			out := types.FuncParam{Name: pm.Name()}
 			pt, ok := r.dereferenceType(p, pm.Type())
 			if !ok {
 				return false
@@ -522,15 +563,14 @@ func (r *rootPackage) parseSignatureType(p *Package, s *types.Signature, xm *Fun
 	return true
 }
 
-func (r *rootPackage) finishNamedFunc(name string, st *types.Signature, t Type) bool {
-	ft, ok := t.(*FunctionType)
+func (r *rootPackage) finishNamedFunc(st *gotypes.Signature, t types.Type) bool {
+	ft, ok := t.(*types.Function)
 	if !ok {
 		return false
 	}
 	if !r.parseSignatureType(r.refPkg, st, ft, false) {
 		return false
 	}
-	r.refPkg.markTypeDone(name)
 	return true
 }
 

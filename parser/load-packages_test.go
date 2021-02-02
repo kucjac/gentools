@@ -1,7 +1,9 @@
-package astreflect
+package parser
 
 import (
 	"testing"
+
+	"github.com/kucjac/gentools/types"
 )
 
 func TestParsePackages(t *testing.T) {
@@ -13,21 +15,21 @@ func TestParsePackages(t *testing.T) {
 	}
 
 	// Get package reflection by it's identifier.
-	thisPkg, ok := pkgs.PackageByIdentifier("astreflect")
+	typesPkg, ok := pkgs.PackageByPath("github.com/kucjac/gentools/types")
 	if !ok {
-		t.Error("Package 'astreflect' not found by identifier")
+		t.Error("Package 'types' not found by path")
 		return
 	}
 
 	// Get the 'Type' interface.
-	typeInterface, ok := thisPkg.GetInterfaceType("Type")
+	typeInterface, ok := typesPkg.GetInterfaceType("Type")
 	if !ok {
 		t.Error("Interface 'Type' not found'")
 		return
 	}
 
 	// Get the 'StructType' struct type.
-	structType, ok := thisPkg.GetStructType("StructType")
+	structType, ok := typesPkg.GetStruct("StructType")
 	if !ok {
 		t.Error("Struct 'StructType' not found")
 		return
@@ -46,8 +48,8 @@ func TestParsePackages(t *testing.T) {
 	}
 
 	// The pointer to the 'StructType' should in fact implement the 'Type' interface. Let's check it.
-	pointer := &PointerType{PointedType: structType}
-	if ok := Implements(pointer, typeInterface); !ok {
+	pointer := &types.Pointer{PointedType: structType}
+	if ok := types.Implements(pointer, typeInterface); !ok {
 		t.Error("'*StructType' doesn't implement 'Type' interface")
 		return
 	}
@@ -61,34 +63,34 @@ func TestParsePackages(t *testing.T) {
 		var (
 			expectedName     string
 			expectedType     string
-			expectedKind     Kind
-			expectedElemKind Kind
+			expectedKind     types.Kind
+			expectedElemKind types.Kind
 		)
 
 		switch i {
 		case 0:
 			expectedName = "Pkg"
 			expectedType = "*Package"
-			expectedKind = Ptr
-			expectedElemKind = Struct
+			expectedKind = types.KindPtr
+			expectedElemKind = types.KindStruct
 		case 1:
 			expectedName = "Comment"
 			expectedType = "string"
-			expectedKind = String
+			expectedKind = types.KindString
 		case 2:
 			expectedName = "TypeName"
 			expectedType = "string"
-			expectedKind = String
+			expectedKind = types.KindString
 		case 3:
 			expectedName = "Fields"
 			expectedType = "[]StructField"
-			expectedKind = Slice
-			expectedElemKind = Struct
+			expectedKind = types.KindSlice
+			expectedElemKind = types.KindStruct
 		case 4:
 			expectedName = "Methods"
 			expectedType = "[]FunctionType"
-			expectedKind = Slice
-			expectedElemKind = Struct
+			expectedKind = types.KindSlice
+			expectedElemKind = types.KindStruct
 		}
 		if sField.Name != expectedName {
 			t.Errorf("Expected field name mismatch. Expected: %s, is %s", expectedName, sField.Name)
@@ -99,14 +101,20 @@ func TestParsePackages(t *testing.T) {
 		if sField.Type.Kind() != expectedKind {
 			t.Errorf("Expected field kind mismatch. Expected: %s is %s", expectedKind, sField.Type.Kind())
 		}
-		if expectedElemKind != Invalid {
+		if expectedElemKind != types.Invalid {
 			if sField.Type.Elem().Kind() != expectedElemKind {
 				t.Errorf("Expected elem Kind mismatch. Expected: %s is %s", expectedElemKind, sField.Type.Elem().Kind())
 			}
 		}
 	}
 
-	tt, ok := thisPkg.GetStructType("testingType")
+	thisPkg, ok := pkgs.PackageByPath("github.com/kucjac/gentools/parser")
+	if !ok {
+		t.Error("Package parser not found")
+		return
+	}
+
+	tt, ok := thisPkg.GetStruct("testingType")
 	if !ok {
 		t.Error("TestingType not found")
 		return
@@ -124,11 +132,11 @@ func TestParsePackages(t *testing.T) {
 		t.Errorf("'embeddedType' field should be embedded")
 		return
 	}
-	if embeddedField.Type.Kind() != Struct {
+	if embeddedField.Type.Kind() != types.KindStruct {
 		t.Errorf("'embeddedType' field kind should be 'Struct' is: %s", embeddedField.Type.Kind())
 		return
 	}
-	et, ok := embeddedField.Type.(*StructType)
+	et, ok := embeddedField.Type.(*types.Struct)
 	if !ok {
 		t.Errorf("'embeddedType' field should be of 'StructType' field. Is: %T", embeddedField.Type)
 		return

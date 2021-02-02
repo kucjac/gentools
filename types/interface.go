@@ -1,17 +1,17 @@
-package astreflect
+package types
 
-var _ Type = (*InterfaceType)(nil)
+var _ Type = (*Interface)(nil)
 
-// InterfaceType is the interface type model definition.
-type InterfaceType struct {
+// Interface is the interface type model definition.
+type Interface struct {
 	Pkg           *Package
 	Comment       string
 	InterfaceName string
-	Methods       []FunctionType
+	Methods       []Function
 }
 
 // Name implements Type interface.
-func (i InterfaceType) Name(identified bool, packageContext string) string {
+func (i Interface) Name(identified bool, packageContext string) string {
 	if identified && packageContext != i.Pkg.Path {
 		if identifier := i.Pkg.Identifier; identifier != "" {
 			return identifier + "." + i.InterfaceName
@@ -21,68 +21,63 @@ func (i InterfaceType) Name(identified bool, packageContext string) string {
 }
 
 // FullName implements Type interface.
-func (i InterfaceType) FullName() string {
+func (i Interface) FullName() string {
 	return i.Pkg.Path + "/" + i.InterfaceName
 }
 
 // Package implements Type interface
-func (i InterfaceType) Package() *Package {
+func (i *Interface) Package() *Package {
 	return i.Pkg
 }
 
 // Kind implements Type interface.
-func (i InterfaceType) Kind() Kind {
-	return Interface
+func (i *Interface) Kind() Kind {
+	return KindInterface
 }
 
 // Elem implements Type interface.
-func (i InterfaceType) Elem() Type {
+func (i *Interface) Elem() Type {
 	return nil
 }
 
-// String implements Type interface.
-func (i InterfaceType) String() string {
+// KindString implements Type interface.
+func (i Interface) String() string {
 	return i.Name(true, "")
 }
 
 // Zero implements Type interface.
-func (i InterfaceType) Zero(_ bool, _ string) string {
+func (i Interface) Zero(_ bool, _ string) string {
 	return "nil"
 }
 
 // Implements checks if given interface implements another interface.
-func (i InterfaceType) Implements(another *InterfaceType) bool {
+func (i *Interface) Implements(another *Interface) bool {
 	return Implements(i, another)
 }
 
 // Equal implements Type interface.
-func (i InterfaceType) Equal(another Type) bool {
-	var it InterfaceType
-	switch t := another.(type) {
-	case *InterfaceType:
-		it = *t
-	case InterfaceType:
-		it = t
-	default:
+func (i *Interface) Equal(another Type) bool {
+	it, ok := another.(*Interface)
+	if !ok {
 		return false
 	}
 	return it.Pkg == i.Pkg && it.InterfaceName == i.InterfaceName
 }
 
 // Implements checks if the type t implements interface 'interfaceType'.
-func Implements(t Type, interfaceType *InterfaceType) bool {
+func Implements(t Type, interfaceType *Interface) bool {
 	var (
-		s         *StructType
+		s         *Struct
 		isPointer bool
 	)
 	for s == nil {
 		switch tt := t.(type) {
-		case *PointerType:
+		case *Pointer:
 			isPointer = true
 			t = tt.PointedType
-		case *WrappedType:
+		case *Alias:
 			t = tt.Type
-		case *StructType:
+		case *Struct:
 			s = tt
 		default:
 			return false
@@ -91,7 +86,7 @@ func Implements(t Type, interfaceType *InterfaceType) bool {
 	return s.Implements(interfaceType, isPointer)
 }
 
-func implements(interfaceToImplement *InterfaceType, implementer methoder, pointer bool) bool {
+func implements(interfaceToImplement *Interface, implementer methoder, pointer bool) bool {
 	implMethods := implementer.getMethods()
 	if len(interfaceToImplement.Methods) > len(implMethods) {
 		return false
@@ -135,5 +130,5 @@ func implements(interfaceToImplement *InterfaceType, implementer methoder, point
 }
 
 type methoder interface {
-	getMethods() []FunctionType
+	getMethods() []Function
 }

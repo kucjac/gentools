@@ -1,13 +1,13 @@
-package astreflect
+package types
 
 import (
 	"strings"
 )
 
-var _ Type = FunctionType{}
+var _ Type = (*Function)(nil)
 
-// FunctionType is the function type used for getting.
-type FunctionType struct {
+// Function is the function type used for getting.
+type Function struct {
 	Comment  string
 	Pkg      *Package
 	Receiver *Receiver
@@ -18,7 +18,7 @@ type FunctionType struct {
 }
 
 // Name implements Type interface.
-func (f FunctionType) Name(identified bool, packageContext string) string {
+func (f Function) Name(identified bool, packageContext string) string {
 	if identified && packageContext != f.Pkg.Path {
 		if i := f.Pkg.Identifier; i != "" {
 			return i + "." + f.FuncName
@@ -28,27 +28,27 @@ func (f FunctionType) Name(identified bool, packageContext string) string {
 }
 
 // FullName implements Type interface.
-func (f FunctionType) FullName() string {
+func (f *Function) FullName() string {
 	return f.Pkg.Path + "/" + f.FuncName
 }
 
 // Package implements Type interface.
-func (f FunctionType) Package() *Package {
+func (f *Function) Package() *Package {
 	return f.Pkg
 }
 
 // Kind implements Type interface.
-func (f FunctionType) Kind() Kind {
-	return Func
+func (f *Function) Kind() Kind {
+	return KindFunc
 }
 
 // Elem implements Type interface.
-func (f FunctionType) Elem() Type {
+func (f *Function) Elem() Type {
 	return nil
 }
 
-// String implements Type interface.
-func (f FunctionType) String() string {
+// KindString implements Type interface.
+func (f Function) String() string {
 	sb := strings.Builder{}
 	sb.WriteString("func ")
 	if f.Receiver != nil {
@@ -74,19 +74,14 @@ func (f FunctionType) String() string {
 }
 
 // Zero implements Type interface.
-func (f FunctionType) Zero(_ bool, _ string) string {
+func (f *Function) Zero(_ bool, _ string) string {
 	return "nil"
 }
 
 // Equal implements Type interface.
-func (f FunctionType) Equal(another Type) bool {
-	var ft FunctionType
-	switch t := another.(type) {
-	case *FunctionType:
-		ft = *t
-	case FunctionType:
-		ft = t
-	default:
+func (f *Function) Equal(another Type) bool {
+	ft, ok := another.(*Function)
+	if !ok {
 		return false
 	}
 	if (f.Receiver == nil && ft.Receiver != nil) || (ft.Receiver == nil && f.Receiver != nil) {
@@ -101,7 +96,7 @@ type FuncParam struct {
 	Type Type
 }
 
-// String implements fmt.Stringer interface.
+// KindString implements fmt.Stringer interface.
 func (f FuncParam) String() string {
 	return f.Name + " " + f.Type.String()
 }
@@ -118,6 +113,6 @@ func (r *Receiver) String() string {
 
 // IsPointer checks if the receiver type is a pointer.
 func (r *Receiver) IsPointer() bool {
-	_, ok := r.Type.(*PointerType)
+	_, ok := r.Type.(*Pointer)
 	return ok
 }

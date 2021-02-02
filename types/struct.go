@@ -1,26 +1,29 @@
-package astreflect
+package types
 
-import "strconv"
+import (
+	"strconv"
+	"strings"
+)
 
-// Compile type check if *StructType implements Type interface.
-var _ Type = (*StructType)(nil)
+// Compile type check if *Struct implements Type interface.
+var _ Type = (*Struct)(nil)
 
-// StructType is the struct type reflection.
-type StructType struct {
+// Struct is the struct type reflection.
+type Struct struct {
 	Pkg      *Package
 	Comment  string
 	TypeName string
 	Fields   []StructField
-	Methods  []FunctionType
+	Methods  []Function
 }
 
 // Implements checks if given structure implements provided interface.
-func (s *StructType) Implements(interfaceType *InterfaceType, pointer bool) bool {
+func (s *Struct) Implements(interfaceType *Interface, pointer bool) bool {
 	return implements(interfaceType, s, pointer)
 }
 
 // Name implements Type interface.
-func (s *StructType) Name(identifier bool, packageContext string) string {
+func (s *Struct) Name(identifier bool, packageContext string) string {
 	if identifier && packageContext != s.Pkg.Path {
 		if i := s.Pkg.Identifier; i != "" {
 			return i + "." + s.TypeName
@@ -30,45 +33,45 @@ func (s *StructType) Name(identifier bool, packageContext string) string {
 }
 
 // FullName implements Type interface.
-func (s *StructType) FullName() string {
+func (s *Struct) FullName() string {
 	return s.Pkg.Path + "/" + s.TypeName
 }
 
 // PkgPath implements Type interface.
-func (s *StructType) Package() *Package {
+func (s *Struct) Package() *Package {
 	return s.Pkg
 }
 
 // Kind implements Type interface.
-func (s *StructType) Kind() Kind {
-	return Struct
+func (s *Struct) Kind() Kind {
+	return KindStruct
 }
 
 // Elem implements Type interface.
-func (s *StructType) Elem() Type {
+func (s *Struct) Elem() Type {
 	return nil
 }
 
-// String implements Type interface.
-func (s *StructType) String() string {
+// KindString implements Type interface.
+func (s *Struct) String() string {
 	return s.Name(true, "")
 }
 
 // Zero implements Type interface.
-func (s *StructType) Zero(identified bool, packageContext string) string {
+func (s *Struct) Zero(identified bool, packageContext string) string {
 	return s.Name(identified, packageContext) + "{}"
 }
 
 // Equal implements Type interface.
-func (s *StructType) Equal(another Type) bool {
-	st, ok := another.(*StructType)
+func (s *Struct) Equal(another Type) bool {
+	st, ok := another.(*Struct)
 	if !ok {
 		return false
 	}
 	return st.Pkg == s.Pkg && st.TypeName == s.TypeName
 }
 
-func (s *StructType) getMethods() []FunctionType {
+func (s *Struct) getMethods() []Function {
 	return s.Methods
 }
 
@@ -83,7 +86,7 @@ type StructField struct {
 	Anonymous bool
 }
 
-// String implements fmt.Stringer interface.
+// KindString implements fmt.Stringer interface.
 func (s StructField) String() string {
 	return s.Name + "\t" + s.Type.String() + "\t`" + string(s.Tag) + "`"
 }
@@ -97,6 +100,76 @@ func (s StructField) String() string {
 // and colon (U+003A ':').  Each value is quoted using U+0022 '"'
 // characters and Go string literal syntax.
 type StructTag string
+
+// StructTagTuple is a tuple key,value for the struct tag.
+type StructTagTuple struct {
+	Key, Value string
+}
+
+// StructTagTuples is the slice alias over the the structTag key, value tuples.
+// It is used to recreate the StructTag.
+type StructTagTuples []StructTagTuple
+
+// Join joins the structTag tuples and creates a single StructTag.
+func (s StructTagTuples) Join() StructTag {
+	var sb strings.Builder
+	for i := range s {
+		sb.WriteString(s[i].Key)
+		sb.WriteRune(':')
+		sb.WriteRune('"')
+		sb.WriteString(s[i].Value)
+		sb.WriteRune('"')
+		if i != len(s)-1 {
+			sb.WriteRune(' ')
+		}
+	}
+	return StructTag(sb.String())
+}
+
+// Split splits up the struct tag into key, value tuples.
+func (tag StructTag) Split() (tuples StructTagTuples) {
+	for tag != "" {
+		// Skip leading space.
+		i := 0
+		for i < len(tag) && tag[i] == ' ' {
+			i++
+		}
+		tag = tag[i:]
+		if tag == "" {
+			break
+		}
+		i = 0
+		for i < len(tag) && tag[i] > ' ' && tag[i] != ':' && tag[i] != '"' && tag[i] != 0x7f {
+			i++
+		}
+		if i == 0 || i+1 >= len(tag) || tag[i] != ':' || tag[i+1] != '"' {
+			break
+		}
+		name := string(tag[:i])
+		tag = tag[i+1:]
+
+		// Scan quoted string to find value.
+		i = 1
+		for i < len(tag) && tag[i] != '"' {
+			if tag[i] == '\\' {
+				i++
+			}
+			i++
+		}
+		if i >= len(tag) {
+			break
+		}
+		quotedValue := string(tag[:i+1])
+		tag = tag[i+1:]
+
+		value, err := strconv.Unquote(quotedValue)
+		if err != nil {
+			break
+		}
+		tuples = append(tuples, StructTagTuple{Key: name, Value: value})
+	}
+	return tuples
+}
 
 // Get returns the value associated with key in the tag string.
 // If there is no such key in the tag, Get returns the empty string.
@@ -115,9 +188,6 @@ func (tag StructTag) Get(key string) string {
 // the tag string. If the tag does not have the conventional format,
 // the value returned by Lookup is unspecified.
 func (tag StructTag) Lookup(key string) (value string, ok bool) {
-	// When modifying this code, also update the validateStructTag code
-	// in cmd/vet/structtag.go.
-
 	for tag != "" {
 		// Skip leading space.
 		i := 0

@@ -1,4 +1,4 @@
-package astreflect
+package parser
 
 import (
 	"testing"

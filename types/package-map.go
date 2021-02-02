@@ -1,14 +1,27 @@
-package astreflect
+package types
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 // PackageMap is a slice wrapper over Package type.
 type PackageMap map[string]*Package
+
+// NewPackage creates new package definition in given package map.
+func (p PackageMap) NewPackage(name, identifier string) (*Package, error) {
+	if name == "" {
+		return nil, errors.New("empty package name")
+	}
+	if _, ok := p[name]; ok {
+		return nil, errors.New("package with given name already defined")
+	}
+	pkg := NewPackage(name, identifier)
+	p[name] = pkg
+	return pkg, nil
+}
 
 func (p PackageMap) MustGetByPath(path string) *Package {
 	pkg, ok := p[path]
@@ -63,7 +76,7 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 			if !ok {
 				return nil, false
 			}
-			return ArrayType{Type: tp, ArrayKind: Slice}, true
+			return &Array{Type: tp, ArrayKind: KindSlice}, true
 		}
 
 		size, err := strconv.Atoi(typeOf[1:closing])
@@ -75,7 +88,7 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 		if !ok {
 			return nil, false
 		}
-		return ArrayType{Type: tp, ArrayKind: Array, ArraySize: size}, true
+		return &Array{Type: tp, ArrayKind: KindArray, ArraySize: size}, true
 	case '*':
 		if len(typeOf) == 1 {
 			return nil, false
@@ -84,7 +97,7 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 		if !ok {
 			return nil, false
 		}
-		return PointerType{PointedType: tp}, true
+		return &Pointer{PointedType: tp}, true
 	}
 
 	var dir ChanDir
@@ -108,7 +121,7 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 		if !ok {
 			return nil, false
 		}
-		return ChanType{Type: t, Dir: dir}, true
+		return &Chan{Type: t, Dir: dir}, true
 	} else if dir != 0 {
 		return nil, false
 	}
@@ -139,7 +152,7 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 		if !ok {
 			return nil, false
 		}
-		return MapType{Key: kt, Value: vt}, true
+		return &Map{Key: kt, Value: vt}, true
 	}
 
 	indexNext, indexDot, indexBracket := -1, -1, -1
@@ -205,33 +218,8 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 	if next == "" || next == "()" || next == "{}" {
 		return tp, true
 	}
-	if next != "" && next[0] == '0' && tp.Kind() != Wrapper {
+	if next != "" && next[0] == '0' && tp.Kind() != KindWrapper {
 		return nil, false
 	}
 	return tp, true
-}
-
-type packageMap struct {
-	sync.Mutex
-	pkgMap map[string]*Package
-}
-
-func (p *packageMap) read(key string) (*Package, bool) {
-	p.Lock()
-	defer p.Unlock()
-	v, ok := p.pkgMap[key]
-	return v, ok
-}
-
-func (p *packageMap) write(key string, value *Package) {
-	p.Lock()
-	defer p.Unlock()
-	p.pkgMap[key] = value
-}
-
-// newPackage creates new package for given pkgPath and identifier.
-func (p *packageMap) newPackage(pkgPath, identifier string) *Package {
-	pkg := &Package{Path: pkgPath, Identifier: identifier, Types: map[string]Type{}, typesInProgress: map[string]Type{}}
-	p.write(pkgPath, pkg)
-	return pkg
 }
