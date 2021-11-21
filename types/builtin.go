@@ -89,9 +89,11 @@ func init() {
 			Complex64 = st
 		case KindComplex128:
 			Complex128 = st
+		case KindString:
+			String = st
 		}
 	}
-	String = aliasOf(builtIn, "string", SliceOf(Byte))
+
 	er := &Interface{
 		Pkg:           builtIn,
 		InterfaceName: "error",
@@ -100,6 +102,7 @@ func init() {
 			Out:      []FuncParam{{Type: String}},
 		}},
 	}
+
 	builtIn.Interfaces = append(builtIn.Interfaces, er)
 	builtIn.Types["error"] = er
 	Error = er

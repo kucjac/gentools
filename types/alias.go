@@ -46,14 +46,14 @@ func (w *Alias) FullName() string {
 	return w.Pkg.Path + "/" + w.AliasName
 }
 
-// PkgPath implements Type interface.
+// Package implements Type interface.
 func (w *Alias) Package() *Package {
 	return w.Pkg
 }
 
 // Kind implements Type interface.
 func (w *Alias) Kind() Kind {
-	return KindWrapper
+	return w.Type.Kind()
 }
 
 // Elem implements Type interface.
@@ -69,22 +69,24 @@ func (w Alias) String() string {
 // Zero implements Type interface.
 func (w *Alias) Zero(identified bool, packageContext string) string {
 	t := w.Type
-	for t.Kind() == KindWrapper {
-		t = t.Elem()
-	}
 
-	if t.Kind().IsBuiltin() {
-		return w.Name(identified, packageContext) + "(" + t.Zero(identified, packageContext) + ")"
-	}
-
-	switch t.Kind() {
-	case KindStruct, KindArray:
-		return w.Name(identified, packageContext) + "{}"
-	case KindSlice, KindInterface, KindChan, KindMap, KindFunc, KindPtr:
-		return "nil"
-	default:
-		return "nil"
-	}
+	return w.Name(identified, packageContext) + "(" + t.Zero(identified, packageContext) + ")"
+	// for t.Kind() == KindWrapper {
+	// 	t = t.Elem()
+	// }
+	//
+	// if t.Kind().IsBuiltin() {
+	// 	return w.Name(identified, packageContext) + "(" + t.Zero(identified, packageContext) + ")"
+	// }
+	//
+	// switch t.Kind() {
+	// case KindStruct, KindArray:
+	// 	return w.Name(identified, packageContext) + "{}"
+	// case KindSlice, KindInterface, KindChan, KindMap, KindFunc, KindPtr:
+	// 	return "nil"
+	// default:
+	// 	return "nil"
+	// }
 }
 
 // Equal implements Type interface.

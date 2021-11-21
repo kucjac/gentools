@@ -50,6 +50,11 @@ func (i Interface) Zero(_ bool, _ string) string {
 	return "nil"
 }
 
+// IsEmpty checks if it is an empty interface -> 'interface{}'
+func (i *Interface) IsEmpty() bool {
+	return len(i.Methods) == 0
+}
+
 // Implements checks if given interface implements another interface.
 func (i *Interface) Implements(another *Interface) bool {
 	return Implements(i, another)

@@ -17,7 +17,7 @@ type Type interface {
 	Kind() Kind
 	// Elem gets the wrapped, pointed, base of
 	Elem() Type
-	// KindString gets the full name string representation of given type.
+	// String gets the full name string representation of given type.
 	String() string
 	// Zero gets zero value string of given type.
 	Zero(identified bool, packageContext string) string

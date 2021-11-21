@@ -218,7 +218,8 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 	if next == "" || next == "()" || next == "{}" {
 		return tp, true
 	}
-	if next != "" && next[0] == '0' && tp.Kind() != KindWrapper {
+
+	if _, isAlias := tp.(*Alias); next != "" && next[0] == '0' && !isAlias {
 		return nil, false
 	}
 	return tp, true
