@@ -137,3 +137,12 @@ func implements(interfaceToImplement *Interface, implementer methoder, pointer b
 type methoder interface {
 	getMethods() []Function
 }
+
+// IsEmptyInterface checks if the input type is an empty interface.
+func IsEmptyInterface(tp Type) bool {
+	i, ok := tp.(*Interface)
+	if !ok {
+		return false
+	}
+	return i.IsEmpty()
+}

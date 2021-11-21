@@ -159,5 +159,4 @@ func TestParsePackages(t *testing.T) {
 	if etField.Type.Name(true, "testing") != "*T" {
 		t.Errorf("'embeddedType' field type with 'testing' package context should be '*T' but is: %v", etField.Type.Name(true, ""))
 	}
-
 }

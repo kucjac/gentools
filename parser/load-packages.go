@@ -155,10 +155,10 @@ func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package
 	initWg.Add(len(packageMap))
 	finishGroup.Add(len(packageMap))
 
-	var rootPkgs []*rootPackage
-	for _, importedPkg := range pkgList {
+	rootPkgs := make([]*rootPackage, len(pkgList))
+	for i, importedPkg := range pkgList {
 		rootPkg := &rootPackage{typesPkg: importedPkg.pkg, pkgMap: p, loadConfig: cfg, typesInProgress: map[string]types.Type{}}
-		rootPkgs = append(rootPkgs, rootPkg)
+		rootPkgs[i] = rootPkg
 		go rootPkg.parseTypePkg(initWg, finishGroup)
 	}
 	finishGroup.Wait()
@@ -218,6 +218,7 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 		inProgress[i] = tuple{name, tp}
 		i++
 	}
+
 	for _, tpl := range inProgress {
 		name, tt := tpl.name, tpl.tp
 		tp := typesScope.Lookup(name)
@@ -230,8 +231,7 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 				continue
 			}
 		case *gotypes.Signature:
-			ok := r.finishNamedFunc(t, tt)
-			if !ok {
+			if !r.finishNamedFunc(t, tt) {
 				continue
 			}
 		default:
@@ -460,6 +460,9 @@ func (r *rootPackage) parseInterfaceMethods(p *types.Package, it *gotypes.Interf
 
 func (r *rootPackage) finishNamedStructType(t *types.Struct, named *gotypes.Named) bool {
 	p := r.refPkg
+	if t.TypeName == "Foo" {
+		_ = t.TypeName
+	}
 	r.parseStructFields(p, named.Underlying().(*gotypes.Struct), t)
 
 	t.TypeName = named.Obj().Name()
