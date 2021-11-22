@@ -57,6 +57,8 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
+          key: ${{ matrix.go }}-${{ matrix.os }}-go-${{ hashFiles('**/go.sum') }}
+
 
       - name: Check linters
         uses: golangci/golangci-lint-action@v2
