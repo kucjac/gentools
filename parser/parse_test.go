@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"go/constant"
 	"testing"
 
 	"github.com/kucjac/gentools/types"
@@ -173,6 +174,23 @@ func TestParse(t *testing.T) {
 
 		if enumOne.Comment != "EnumeratedOne defines a first enumerated type value.\n" {
 			t.Fatalf("EnumeratedOne comment doesn't match: '%s'", enumOne.Comment)
+		}
+
+		if !enumOne.Constant {
+			t.Fatal("EnumeratedOne should be a constant")
+		}
+
+		if enumOne.Val == nil {
+			t.Fatal("EnumeratedOne constant value should be defined")
+		}
+
+		if enumOne.Val.Kind() != constant.Int || enumOne.Val.String() != "1" {
+			t.Fatal("EnumeratedOne constant value should be of kind Integer and take value of 1")
+		}
+
+		v, ok := enumOne.ConstValue().(int)
+		if !ok || v != int(1) {
+			t.Fatalf("EnumeratedOne constant value doesn't match: %v", enumOne.ConstValue())
 		}
 	})
 

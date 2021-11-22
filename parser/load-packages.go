@@ -254,7 +254,7 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 			if !ok {
 				continue
 			}
-			if err := p.NewConstant(ot.Name(), declType); err != nil {
+			if err := p.NewConstant(ot.Name(), declType, ot.Val()); err != nil {
 				if r.loadConfig.Verbose {
 					fmt.Println(err)
 				}

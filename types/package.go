@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"go/constant"
 	"strings"
 	"sync"
 )
@@ -30,16 +31,27 @@ func (p *Package) NewVariable(name string, tp Type) error {
 	if err := p.hasName(name); err != nil {
 		return err
 	}
-	p.Declarations[name] = Declaration{Name: name, Type: tp}
+	p.Declarations[name] = Declaration{
+		Name:     name,
+		Type:     tp,
+		Constant: false,
+		Package:  p,
+	}
 	return nil
 }
 
 // NewConstant adds new package constant Declaration.
-func (p *Package) NewConstant(name string, tp Type) error {
+func (p *Package) NewConstant(name string, tp Type, value constant.Value) error {
 	if err := p.hasName(name); err != nil {
 		return err
 	}
-	p.Declarations[name] = Declaration{Name: name, Type: tp, Constant: true}
+	p.Declarations[name] = Declaration{
+		Name:     name,
+		Type:     tp,
+		Constant: true,
+		Val:      value,
+		Package:  p,
+	}
 	return nil
 }
 
@@ -224,12 +236,4 @@ func trimZeroRuneSpace(typeOf string) string {
 		typeOf = typeOf[1:]
 	}
 	return typeOf
-}
-
-// Declaration is the variable or constant declaration.
-type Declaration struct {
-	Comment  string
-	Name     string
-	Type     Type
-	Constant bool
 }
