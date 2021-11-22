@@ -71,24 +71,22 @@ func (i *Interface) Equal(another Type) bool {
 
 // Implements checks if the type t implements interface 'interfaceType'.
 func Implements(t Type, interfaceType *Interface) bool {
-	var (
-		s         *Struct
-		isPointer bool
-	)
-	for s == nil {
+	var isPointer bool
+	for {
 		switch tt := t.(type) {
 		case *Pointer:
 			isPointer = true
 			t = tt.PointedType
 		case *Alias:
-			t = tt.Type
+			return tt.Implements(interfaceType, isPointer)
 		case *Struct:
-			s = tt
+			return tt.Implements(interfaceType, isPointer)
+		case *Interface:
+			return tt.Implements(interfaceType)
 		default:
 			return false
 		}
 	}
-	return s.Implements(interfaceType, isPointer)
 }
 
 func implements(interfaceToImplement *Interface, implementer methoder, pointer bool) bool {

@@ -2,6 +2,7 @@ package testcases
 
 import (
 	"context"
+	"strconv"
 	"time"
 )
 
@@ -9,6 +10,7 @@ type Enumerated int
 
 const (
 	_ Enumerated = iota
+	// EnumeratedOne defines a first enumerated type value.
 	EnumeratedOne
 	EnumeratedTwo
 )
@@ -16,8 +18,24 @@ const (
 // FooID is the custom type wrapper on the Foo identifier.
 type FooID int64
 
+// UnmarshalText implements encoding.TextUnmarshaler interface.
+func (f *FooID) UnmarshalText(in []byte) error {
+	i, err := strconv.Atoi(string(in))
+	if err != nil {
+		return err
+	}
+	*f = FooID(i)
+	return nil
+}
+
+// MarshalText implements encoding.TextMarshaler interface.
+func (f FooID) MarshalText() ([]byte, error) {
+	return []byte(strconv.Itoa(int(f))), nil
+}
+
 // Foo is the test model that contains multiple field definitions.
 type Foo struct {
+	// ID is the foo field identifier.
 	ID         FooID  `json:"id"`
 	String     string `custom:"name"`
 	CustomName string

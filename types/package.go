@@ -228,6 +228,7 @@ func trimZeroRuneSpace(typeOf string) string {
 
 // Declaration is the variable or constant declaration.
 type Declaration struct {
+	Comment  string
 	Name     string
 	Type     Type
 	Constant bool

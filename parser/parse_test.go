@@ -29,9 +29,9 @@ func TestZero(t *testing.T) {
 	if !ok {
 		t.Error("TypeOf find types.Type failed")
 	}
-	_, ok = pkgs.TypeOf("types.StructType", nil)
+	_, ok = pkgs.TypeOf("types.Struct", nil)
 	if !ok {
-		t.Error("TypeOf find 'types.StructType' failed")
+		t.Error("TypeOf find 'types.Struct' failed")
 	}
 
 	for _, expected := range []struct {
@@ -49,59 +49,59 @@ func TestZero(t *testing.T) {
 			Type: thisPkg.MustGetType("Type"),
 		},
 		{
-			Name: "[]*gentypes.StructType",
+			Name: "[]*gentypes.Struct",
 			Type: func() types.Type {
-				return &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("StructType")}}
+				return &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("Struct")}}
 			}(),
 		},
 		{
-			Name: "[]*StructType",
+			Name: "[]*Struct",
 			Type: func() types.Type {
-				return &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("StructType")}}
-			}(),
-			PkgContext: thisPkg,
-		},
-		{
-			Name: "[]*StructType{}",
-			Type: func() types.Type {
-				return &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("StructType")}}
+				return &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("Struct")}}
 			}(),
 			PkgContext: thisPkg,
 		},
 		{
-			Name: "[3][]*InterfaceType",
+			Name: "[]*Struct{}",
 			Type: func() types.Type {
-				return &types.Array{ArrayKind: types.KindArray, ArraySize: 3, Type: &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("InterfaceType")}}}
+				return &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("Struct")}}
 			}(),
 			PkgContext: thisPkg,
 		},
 		{
-			Name: "[3][]*gentypes.InterfaceType",
+			Name: "[3][]*Interface",
 			Type: func() types.Type {
-				return &types.Array{ArrayKind: types.KindArray, ArraySize: 3, Type: &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("InterfaceType")}}}
-			}(),
-		},
-		{
-			Name: "[3][]<- chan InterfaceType",
-			Type: func() types.Type {
-				return &types.Array{ArrayKind: types.KindArray, ArraySize: 3, Type: &types.Array{ArrayKind: types.KindSlice, Type: &types.Chan{Dir: types.RecvOnly, Type: thisPkg.MustGetType("InterfaceType")}}}
+				return &types.Array{ArrayKind: types.KindArray, ArraySize: 3, Type: &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("Interface")}}}
 			}(),
 			PkgContext: thisPkg,
 		},
 		{
-			Name: "[3][]chan <- *gentypes.InterfaceType",
+			Name: "[3][]*gentypes.Interface",
+			Type: func() types.Type {
+				return &types.Array{ArrayKind: types.KindArray, ArraySize: 3, Type: &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("Interface")}}}
+			}(),
+		},
+		{
+			Name: "[3][]<- chan Interface",
+			Type: func() types.Type {
+				return &types.Array{ArrayKind: types.KindArray, ArraySize: 3, Type: &types.Array{ArrayKind: types.KindSlice, Type: &types.Chan{Dir: types.RecvOnly, Type: thisPkg.MustGetType("Interface")}}}
+			}(),
+			PkgContext: thisPkg,
+		},
+		{
+			Name: "[3][]chan <- *gentypes.Interface",
 			Type: func() types.Type {
 				return &types.Array{
 					ArrayKind: types.KindArray, ArraySize: 3, Type: &types.Array{
 						ArrayKind: types.KindSlice, Type: &types.Chan{
-							Dir: types.SendOnly, Type: &types.Pointer{PointedType: thisPkg.MustGetType("InterfaceType")}},
+							Dir: types.SendOnly, Type: &types.Pointer{PointedType: thisPkg.MustGetType("Interface")}},
 					},
 				}
 			}(),
 		},
 		{
-			Name:       "map[string][]*StructType",
-			Type:       &types.Map{Key: &types.BuiltInType{BuiltInKind: types.KindString}, Value: &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("StructType")}}},
+			Name:       "map[string][]*Struct",
+			Type:       &types.Map{Key: &types.BuiltInType{BuiltInKind: types.KindString}, Value: &types.Array{ArrayKind: types.KindSlice, Type: &types.Pointer{PointedType: thisPkg.MustGetType("Struct")}}},
 			PkgContext: thisPkg,
 		},
 		{
@@ -126,7 +126,10 @@ func TestZero(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	const testCasesPkgPath = "github.com/kucjac/gentools/parser/testcases"
-	pkgs, err := LoadPackages(LoadConfig{PkgNames: []string{testCasesPkgPath}, Verbose: true})
+	pkgs, err := LoadPackages(LoadConfig{PkgNames: []string{
+		testCasesPkgPath,
+		"encoding",
+	}, Verbose: true})
 	if err != nil {
 		t.Errorf("Parsing packages failed: %v", err)
 		return
@@ -151,13 +154,93 @@ func TestParse(t *testing.T) {
 	if !ok {
 		t.Fatal("type Enumerated is not found")
 	}
-	enumAlias, ok := enum.(*types.Alias)
+	t.Run("Enumerated", func(t *testing.T) {
+		enumAlias, ok := enum.(*types.Alias)
+		if !ok {
+			t.Fatal("type Enumerated is not an Alias")
+		}
+		if enumAlias.Kind() != types.KindInt {
+			t.Fatal("type Enumerated kind is not a KindInt")
+		}
+
+		enumOne, ok := pkg.Declarations["EnumeratedOne"]
+		if !ok {
+			t.Fatal("no EnumeratedOne declaration found in the package")
+		}
+		if !enumOne.Type.Equal(enum) {
+			t.Fatalf("EnumeratedOne type is not Enumerated: %v", enumOne.Type)
+		}
+
+		if enumOne.Comment != "EnumeratedOne defines a first enumerated type value.\n" {
+			t.Fatalf("EnumeratedOne comment doesn't match: '%s'", enumOne.Comment)
+		}
+	})
+
+	fooID, ok := pkg.GetType("FooID")
 	if !ok {
-		t.Fatal("type Enumerated is not an Alias")
+		t.Fatal("type FooID not found")
 	}
-	if enumAlias.Kind() != types.KindInt {
-		t.Fatal("type Enumerated kind is not a KindInt")
-	}
+
+	t.Run("FooID", func(t *testing.T) {
+		if k := fooID.Kind(); k != types.KindInt64 {
+			t.Errorf("type FooID is not of a KindInt64 but: %v", k)
+		}
+
+		tm, ok := pkgs.TypeOf("encoding.TextMarshaler", nil)
+		if !ok {
+			t.Fatalf("type encoding.TextMarshaler not found")
+		}
+
+		tu, ok := pkgs.TypeOf("encoding.TextUnmarshaler", nil)
+		if !ok {
+			t.Fatalf("type encoding.TextUnmarshaler not found")
+		}
+
+		tmInterface, ok := tm.(*types.Interface)
+		if !ok {
+			t.Fatalf("type encoding.TextMarshaler is not an interface, but: %T", tm)
+		}
+
+		tuInterface, ok := tu.(*types.Interface)
+		if !ok {
+			t.Fatalf("type encoding.TextUnmarshaler is not an interface, but: %T", tm)
+		}
+
+		// The non pointer type FooID should implement encoding.TextMarshaler.
+		if !types.Implements(fooID, tmInterface) {
+			t.Error("type FooID doesn't implement encoding.TextMarshaler interface")
+		}
+
+		// But non pointer FooID should not implement encoding.TextUnmarshaler.
+		if types.Implements(fooID, tuInterface) {
+			t.Error("type FooID should not implement encoding.TextUnmarshaler interface")
+		}
+
+		// The Pointer to FooID - *FooID, should implement encoding.TextUnmarshaler interface.
+		ptrFooID := types.PointerTo(fooID)
+		if !types.Implements(ptrFooID, tuInterface) {
+			t.Error("pointer to FooID should implement encoding.TextUnmarshaler interface")
+		}
+
+		// And also it should implement encoding.TextMarshaler interface.
+		if !types.Implements(ptrFooID, tmInterface) {
+			t.Errorf("pointer to FooID should implement  encoding.TextMarshaler interface")
+		}
+
+		alias := fooID.(*types.Alias)
+		for _, method := range alias.Methods {
+			switch method.FuncName {
+			case "UnmarshalText":
+				if method.Comment != "UnmarshalText implements encoding.TextUnmarshaler interface.\n" {
+					t.Errorf("fooID UnmarshalText comment doesn't match: %s", method.Comment)
+				}
+			case "MarshalText":
+				if method.Comment != "MarshalText implements encoding.TextMarshaler interface.\n" {
+					t.Errorf("fooID MarshalText comment doesn't match: %s", method.Comment)
+				}
+			}
+		}
+	})
 
 	bar, ok := pkg.GetType("Bar")
 	if !ok {
@@ -188,9 +271,9 @@ func TestParse(t *testing.T) {
 	t.Run("InheritMe", func(t *testing.T) {
 		i := inheritMeInterface
 		// TODO: implement comment matching.
-		// if i.Comment != " InheritMe is an interface that will be inherited." {
-		// 	t.Errorf("InheritMe comment not match: '%s'", i.Comment)
-		// }
+		if i.Comment != "InheritMe is an interface that will be inherited.\n" {
+			t.Errorf("InheritMe comment not match: '%s'", i.Comment)
+		}
 
 		if len(i.Methods) != 1 {
 			t.Fatalf("InheritMe should have exactly one method but have: %d", len(i.Methods))
@@ -273,6 +356,9 @@ func TestParse(t *testing.T) {
 				}
 				if tag := field.Tag.Get("json"); tag != "id" {
 					t.Errorf("field 'ID', tag json is not equal to 'id', %v", tag)
+				}
+				if field.Comment != "ID is the foo field identifier.\n" {
+					t.Errorf("field: 'ID', comment not match. Expected: 'ID is the foo field identifier.\\n' is '%s'", field.Comment)
 				}
 			case "String":
 				ftName := field.Type.Name(false, "")

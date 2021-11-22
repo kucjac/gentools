@@ -7,8 +7,13 @@ import (
 )
 
 func TestParsePackages(t *testing.T) {
+	const testCasesPkg = "github.com/kucjac/gentools/parser/testcases"
 	// On test purpose try to parse this package.
-	pkgs, err := LoadPackages(LoadConfig{Paths: []string{"."}, Verbose: true})
+	pkgs, err := LoadPackages(LoadConfig{
+		Paths:    []string{"."},
+		PkgNames: []string{testCasesPkg},
+		Verbose:  true,
+	})
 	if err != nil {
 		t.Errorf("Parsing packages failed: %v", err)
 		return
@@ -28,35 +33,35 @@ func TestParsePackages(t *testing.T) {
 		return
 	}
 
-	// Get the 'StructType' struct type.
-	structType, ok := typesPkg.GetStruct("StructType")
+	// Get the 'Struct' struct type.
+	structType, ok := typesPkg.GetStruct("Struct")
 	if !ok {
-		t.Error("Struct 'StructType' not found")
+		t.Error("Struct 'Struct' not found")
 		return
 	}
 
-	// Check if 'StructType' implements 'Type' interface.
-	// In fact it shouldn't implement it - only *StructType implements it.
+	// Check if 'Struct' implements 'Type' interface.
+	// In fact, it shouldn't implement it - only *Struct implements it.
 	if ok = structType.Implements(typeInterface, false); ok {
-		t.Error("'StructType' implements 'Type' interface but it shouldn't.")
+		t.Error("'Struct' implements 'Type' interface but it shouldn't.")
 		return
 	}
 
 	if ok = structType.Implements(typeInterface, true); !ok {
-		t.Error("'*StructType' doesn't implement 'Type' interface, but it should.")
+		t.Error("'*Struct' doesn't implement 'Type' interface, but it should.")
 		return
 	}
 
-	// The pointer to the 'StructType' should in fact implement the 'Type' interface. Let's check it.
+	// The pointer to the 'Struct' should in fact implement the 'Type' interface. Let's check it.
 	pointer := &types.Pointer{PointedType: structType}
-	if ok := types.Implements(pointer, typeInterface); !ok {
-		t.Error("'*StructType' doesn't implement 'Type' interface")
+	if ok = types.Implements(pointer, typeInterface); !ok {
+		t.Error("'*Struct' doesn't implement 'Type' interface")
 		return
 	}
 
 	// The API allows to check the fields for given struct type.
 	if len(structType.Fields) != 5 {
-		t.Errorf("'StructType' should have 5 fields but have: %d", len(structType.Fields))
+		t.Errorf("'Struct' should have 5 fields but have: %d", len(structType.Fields))
 		return
 	}
 	for i, sField := range structType.Fields {
@@ -88,7 +93,7 @@ func TestParsePackages(t *testing.T) {
 			expectedElemKind = types.KindStruct
 		case 4:
 			expectedName = "Methods"
-			expectedType = "[]FunctionType"
+			expectedType = "[]Function"
 			expectedKind = types.KindSlice
 			expectedElemKind = types.KindStruct
 		}
@@ -108,13 +113,13 @@ func TestParsePackages(t *testing.T) {
 		}
 	}
 
-	thisPkg, ok := pkgs.PackageByPath("github.com/kucjac/gentools/parser")
+	tcPkg, ok := pkgs.PackageByPath(testCasesPkg)
 	if !ok {
-		t.Error("Package parser not found")
+		t.Error("Package testcases not found")
 		return
 	}
 
-	tt, ok := thisPkg.GetStruct("testingType")
+	tt, ok := tcPkg.GetStruct("testingType")
 	if !ok {
 		t.Error("TestingType not found")
 		return
@@ -138,7 +143,7 @@ func TestParsePackages(t *testing.T) {
 	}
 	et, ok := embeddedField.Type.(*types.Struct)
 	if !ok {
-		t.Errorf("'embeddedType' field should be of 'StructType' field. Is: %T", embeddedField.Type)
+		t.Errorf("'embeddedType' field should be of 'Struct' field. Is: %T", embeddedField.Type)
 		return
 	}
 

@@ -9,7 +9,7 @@ type Type interface {
 	//	Developer wants to generate some additional method for the type 'X' within package 'my.com/testing/pkg'.
 	//	In order to generate valid names for the imported types the identity needs to be set to 'true'.
 	//	But current package context ('my.com/testing/pkg') should not be used be prefixed with the identifier.
-	//	Thus an optional 'packageContext' parameter needs to be set to 'my.com/testing/pkg'.
+	//	Thus, an optional 'packageContext' parameter needs to be set to 'my.com/testing/pkg'.
 	Name(identified bool, packageContext string) string
 	// FullName gets the full name of given type with the full package name and a type.
 	FullName() string

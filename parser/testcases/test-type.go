@@ -1,4 +1,4 @@
-package parser
+package testcases
 
 import (
 	"testing"
@@ -18,5 +18,5 @@ func (t testingType) Method(paramNonPtr string) (err error) {
 }
 
 type embeddedType struct {
-	Imported *testing.T `astreflect:"testme"`
+	Imported *testing.T `gentools:"testme"`
 }
