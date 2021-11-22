@@ -4,13 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
-
-env:
-  GOPRIVATE: "github.com/kucjac"
+      - main
 
 jobs:
   build-and-test:
