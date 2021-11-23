@@ -83,3 +83,5 @@ type Bar struct {
 	Error    error
 	NotEmpty NotEmpty
 }
+
+type ArrayWrapper [16]byte

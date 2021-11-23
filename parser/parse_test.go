@@ -335,6 +335,22 @@ func TestParse(t *testing.T) {
 		}
 	})
 
+	t.Run("ArrayWrapper", func(t *testing.T) {
+		aw, ok := pkg.GetType("ArrayWrapper")
+		if !ok {
+			t.Fatal("no ArrayWrapper type found")
+		}
+
+		alias, ok := aw.(*types.Alias)
+		if !ok {
+			t.Fatal("ArrayWrapper is expected to be a wrapper")
+		}
+
+		if !alias.Type.Equal(types.ArrayOf(types.Byte, 16)) {
+			t.Fatalf("ArrayWrapper type is not [16]byte: %v", alias.Type)
+		}
+	})
+
 	bar, ok := pkg.GetType("Bar")
 	if !ok {
 		t.Fatal("no Bar type found")

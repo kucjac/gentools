@@ -345,10 +345,6 @@ func (r *rootPackage) parseComments(p *types.Package) {
 				for _, spec := range dt.Specs {
 					switch st := spec.(type) {
 					case *ast.TypeSpec:
-						if st.Name.Name == "WeirdStruct" {
-							func() {}()
-						}
-
 						tp, ok := p.Types[st.Name.Name]
 						if !ok {
 							if r.loadConfig.Verbose {
@@ -530,6 +526,7 @@ func (r *rootPackage) scaffoldPackageObjects() {
 			}
 		}
 	}
+
 	for _, name := range s.Names() {
 		obj := s.Lookup(name)
 		switch ot := obj.(type) {
@@ -563,7 +560,6 @@ func (r *rootPackage) scaffoldPackageObjects() {
 				}
 				r.setTypeInProgress(name, st)
 			default:
-
 				wt := &types.Alias{
 					Pkg:       r.refPkg,
 					AliasName: name,

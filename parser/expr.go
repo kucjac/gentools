@@ -100,7 +100,7 @@ func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 			}
 			size = i
 		}
-		if size != 0 {
+		if size == 0 {
 			return types.SliceOf(tp), nil
 		}
 		return types.ArrayOf(tp, size), nil
