@@ -248,6 +248,9 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 				continue
 			}
 
+			if _, ok := tt.(*types.Alias); ok {
+				continue
+			}
 			if ok := r.finishNamedType(t, tt); !ok {
 				if r.loadConfig.Verbose {
 					fmt.Printf("package: %s, type: %s not mapped\n", p.Path, t.Obj().Name())

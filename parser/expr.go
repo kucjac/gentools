@@ -38,6 +38,9 @@ func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 		if tp, ok := types.GetBuiltInType(x.Name); ok {
 			return tp, nil
 		}
+		if r.refPkg.Path == "unsafe" && x.Name == "Pointer" {
+			return types.UnsafePointer, nil
+		}
 		tp, ok := r.refPkg.GetType(x.Name)
 		if !ok {
 			return nil, fmt.Errorf("ident: '%s' not found in the package: '%s'", x.Name, r.refPkg.Path)
