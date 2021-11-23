@@ -47,6 +47,22 @@ type Foo struct {
 	Bar        *Bar
 }
 
+type FooSlice *[3]Foo
+
+type FooAlias Foo
+
+type FooPtrAlias *Foo
+
+type (
+	Weird int
+
+	// WeirdStruct docs.
+	WeirdStruct struct {
+		// Name doc.
+		Name string
+	}
+)
+
 type NotEmpty interface {
 	Call(ctx context.Context, options ...string) (n int, err error)
 	InheritMe

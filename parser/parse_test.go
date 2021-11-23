@@ -199,6 +199,81 @@ func TestParse(t *testing.T) {
 		t.Fatal("type FooID not found")
 	}
 
+	fooAlias, ok := pkg.GetType("FooAlias")
+	if !ok {
+		t.Fatal("type FooAlias not found")
+	}
+
+	t.Run("FooAlias", func(t *testing.T) {
+		alias, isAlias := fooAlias.(*types.Alias)
+		if !isAlias {
+			t.Fatalf("type FooAlias is expected to be an alias but is: %T", fooAlias)
+		}
+		if alias.Type == nil {
+			t.Fatal("type FooAlias type is nil")
+		}
+		if !alias.Type.Equal(fooType) {
+			t.Fatal("foo alias type doesn't match Foo type")
+		}
+	})
+
+	t.Run("FooPtrAlias", func(t *testing.T) {
+		tp, ok := pkg.GetType("FooPtrAlias")
+		if !ok {
+			t.Fatal("FooPtrAlias is not found within packages")
+		}
+
+		alias, ok := tp.(*types.Alias)
+		if !ok {
+			t.Fatal("FooPtrAlias is expected to be an *types.Alias")
+		}
+
+		if !alias.Type.Equal(types.PointerTo(fooType)) {
+			t.Fatal("FooPtrAlias is expected to be pointer to Foo type")
+		}
+	})
+
+	t.Run("Weird", func(t *testing.T) {
+		wd, ok := pkg.GetType("Weird")
+		if !ok {
+			t.Fatal("cant find type Weird")
+		}
+
+		alias, ok := wd.(*types.Alias)
+		if !ok {
+			t.Fatal("Weird is expected to be *types.Alias")
+		}
+
+		if !alias.Type.Equal(types.Int) {
+			t.Fatal("Weird type is expected to be Int")
+		}
+	})
+
+	t.Run("WeirdStruct", func(t *testing.T) {
+		tp, ok := pkg.GetType("WeirdStruct")
+		if !ok {
+			t.Fatal("WeirdStruct is not found")
+		}
+
+		st, ok := tp.(*types.Struct)
+		if !ok {
+			t.Fatal("WeirdStruct is expected to be a structure")
+		}
+
+		if st.Comment != "WeirdStruct docs.\n" {
+			t.Errorf("WeirdStruct comment doesn't match: %s", st.Comment)
+		}
+
+		if len(st.Fields) != 1 {
+			t.Fatal("WeirdStruct is expected to contain one field")
+		}
+
+		nm := st.Fields[0]
+		if nm.Comment != "Name doc.\n" {
+			t.Errorf("WeirdStruct.Name field comment doesn't match: %s", nm.Comment)
+		}
+	})
+
 	t.Run("FooID", func(t *testing.T) {
 		if k := fooID.Kind(); k != types.KindInt64 {
 			t.Errorf("type FooID is not of a KindInt64 but: %v", k)

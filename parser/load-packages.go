@@ -154,18 +154,25 @@ func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package
 	initWg.Add(len(packageMap))
 	finishGroup.Add(len(packageMap))
 
-	rootPkgs := make([]*rootPackage, len(pkgList))
-	for i, importedPkg := range pkgList {
+	rootPkgs := map[*gotypes.Package]*rootPackage{}
+	for _, importedPkg := range pkgList {
 		rootPkg := &rootPackage{
+			rootPackages:    rootPkgs,
 			pkgPkg:          importedPkg.pkgPkg,
 			typesPkg:        importedPkg.typesPkg,
 			pkgMap:          p,
 			loadConfig:      cfg,
 			typesInProgress: map[string]types.Type{},
+			mappedAliases:   map[string]struct{}{},
+			namedAliases:    map[string]*gotypes.Named{},
 		}
-		rootPkgs[i] = rootPkg
+		rootPkgs[importedPkg.typesPkg] = rootPkg
+	}
+
+	for _, rootPkg := range rootPkgs {
 		go rootPkg.parseTypePkg(initWg, finishGroup)
 	}
+
 	finishGroup.Wait()
 
 	if cfg.Verbose {
@@ -195,6 +202,9 @@ type rootPackage struct {
 	typesPkg        *gotypes.Package
 	refPkg          *types.Package
 	pkgMap          *packageMap
+	rootPackages    map[*gotypes.Package]*rootPackage
+	mappedAliases   map[string]struct{}
+	namedAliases    map[string]*gotypes.Named
 	loadConfig      *LoadConfig
 	declNames       []string
 	typesInProgress map[string]types.Type
@@ -207,9 +217,7 @@ func (r *rootPackage) setTypeInProgress(name string, tp types.Type) {
 
 func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 	p := r.pkgMap.newPackage(r.typesPkg.Path(), r.typesPkg.Name())
-	if p.Path == "github.com/kucjac/gentools/parser/testcases" {
-		fmt.Println("No way")
-	}
+
 	r.refPkg = p
 	r.scaffoldPackageObjects()
 	initWg.Done()
@@ -231,9 +239,15 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 
 	for _, tpl := range inProgress {
 		name, tt := tpl.name, tpl.tp
+
 		tp := typesScope.Lookup(name)
 		switch t := tp.Type().(type) {
 		case *gotypes.Named:
+			if _, ok := r.mappedAliases[name]; ok {
+				r.namedAliases[name] = t
+				continue
+			}
+
 			if ok := r.finishNamedType(t, tt); !ok {
 				if r.loadConfig.Verbose {
 					fmt.Printf("package: %s, type: %s not mapped\n", p.Path, t.Obj().Name())
@@ -246,6 +260,47 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 			}
 		}
 	}
+
+	for _, file := range r.pkgPkg.Syntax {
+		for _, decl := range file.Decls {
+			dt, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range dt.Specs {
+				ts, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+
+				if _, isAlias := r.mappedAliases[ts.Name.Name]; !isAlias {
+					continue
+				}
+
+				at, err := r.extractAliasExpr(ts.Type)
+				if err != nil {
+					panic(err)
+				}
+
+				named, ok := r.namedAliases[ts.Name.Name]
+				if !ok {
+					continue
+				}
+
+				ip, ok := r.typesInProgress[ts.Name.Name]
+				if !ok {
+					continue
+				}
+				alias, ok := ip.(*types.Alias)
+				if !ok {
+					panic("expected to be an alias")
+				}
+
+				r.finishNamedAliasType(named, alias, at)
+			}
+		}
+	}
+
 	for _, name := range r.declNames {
 		obj := s.Lookup(name)
 		switch ot := obj.(type) {
@@ -287,9 +342,10 @@ func (r *rootPackage) parseComments(p *types.Package) {
 				for _, spec := range dt.Specs {
 					switch st := spec.(type) {
 					case *ast.TypeSpec:
-						if dt.Doc == nil && st.Comment == nil {
-							continue
+						if st.Name.Name == "WeirdStruct" {
+							func() {}()
 						}
+
 						tp, ok := p.Types[st.Name.Name]
 						if !ok {
 							if r.loadConfig.Verbose {
@@ -298,8 +354,8 @@ func (r *rootPackage) parseComments(p *types.Package) {
 							continue
 						}
 						var comment string
-						if st.Comment != nil {
-							comment = st.Comment.Text()
+						if st.Doc != nil {
+							comment = st.Doc.Text()
 						}
 						if comment == "" && dt.Doc != nil {
 							comment = dt.Doc.Text()
@@ -325,7 +381,7 @@ func (r *rootPackage) parseComments(p *types.Package) {
 							}
 							if structType == nil {
 								if r.loadConfig.Verbose {
-									fmt.Printf("getting ast interface type failed: %T\n", st.Type)
+									fmt.Printf("getting ast interface type failed: '%T', '%v'\n", temp, temp)
 								}
 								continue
 							}
@@ -357,7 +413,7 @@ func (r *rootPackage) parseComments(p *types.Package) {
 							}
 							if interfaceType == nil {
 								if r.loadConfig.Verbose {
-									fmt.Printf("getting ast interface type failed: %T\n", st.Type)
+									fmt.Printf("getting ast interface type failed: '%T', '%v - Package: %s'\n", temp, temp, r.pkgPkg.Name)
 								}
 								continue
 							}
@@ -434,10 +490,12 @@ func (r *rootPackage) parseComments(p *types.Package) {
 						}
 						break
 					}
+				} else {
+					funType, _ = p.GetFunction(dt.Name.Name)
 				}
 				if funType == nil {
 					if r.loadConfig.Verbose {
-						fmt.Printf("method: '%s' not found in the pkg declaration\n", dt.Name.Name)
+						fmt.Printf("method: '%s' not found in the pkg: %s declaration\n", dt.Name.Name, p.Path)
 					}
 					continue
 				}
@@ -450,20 +508,43 @@ func (r *rootPackage) parseComments(p *types.Package) {
 func (r *rootPackage) scaffoldPackageObjects() {
 	s := r.typesPkg.Scope()
 
+	for _, file := range r.pkgPkg.Syntax {
+		for _, decl := range file.Decls {
+			dt, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range dt.Specs {
+				ts, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+
+				switch ts.Type.(type) {
+				case *ast.Ident, *ast.StarExpr, *ast.ArrayType, *ast.SelectorExpr, *ast.MapType, *ast.ChanType:
+					r.mappedAliases[ts.Name.Name] = struct{}{}
+				}
+			}
+		}
+	}
 	for _, name := range s.Names() {
 		obj := s.Lookup(name)
-		switch obj.(type) {
-		case *gotypes.TypeName, *gotypes.Func:
-		case *gotypes.Const, *gotypes.Var:
-			r.declNames = append(r.declNames, name)
-			continue
-		default:
-			continue
-		}
+		switch ot := obj.(type) {
+		case *gotypes.TypeName:
+			if _, isAlias := r.mappedAliases[name]; isAlias {
+				wt := &types.Alias{
+					Pkg:       r.refPkg,
+					AliasName: name,
+				}
+				r.setTypeInProgress(name, wt)
+				continue
+			}
 
-		switch ot := obj.Type().(type) {
-		case *gotypes.Named:
-			switch t := ot.Underlying().(type) {
+			named, ok := ot.Type().(*gotypes.Named)
+			if !ok {
+				continue
+			}
+			switch t := named.Underlying().(type) {
 			case *gotypes.Interface:
 				it := &types.Interface{
 					Pkg:           r.refPkg,
@@ -479,14 +560,21 @@ func (r *rootPackage) scaffoldPackageObjects() {
 				}
 				r.setTypeInProgress(name, st)
 			default:
+
 				wt := &types.Alias{
 					Pkg:       r.refPkg,
 					AliasName: name,
 				}
 				r.setTypeInProgress(name, wt)
+				continue
 			}
-		case *gotypes.Signature:
-			if ot.Recv() != nil {
+			continue
+		case *gotypes.Func:
+			sig, ok := ot.Type().(*gotypes.Signature)
+			if !ok {
+				continue
+			}
+			if sig.Recv() != nil {
 				// This is a method which should not be extracted as function.
 				continue
 			}
@@ -495,6 +583,11 @@ func (r *rootPackage) scaffoldPackageObjects() {
 				FuncName: name,
 			}
 			r.setTypeInProgress(name, fT)
+		case *gotypes.Const, *gotypes.Var:
+			r.declNames = append(r.declNames, name)
+			continue
+		default:
+			continue
 		}
 	}
 }
@@ -506,21 +599,15 @@ func (r *rootPackage) finishNamedType(named *gotypes.Named, t types.Type) bool {
 	case *types.Interface:
 		return r.finishNamedInterfaceType(named, ot)
 	case *types.Alias:
-		return r.finishNamedAliasType(named, ot)
+		return false
 	default:
-		panic("invalid type")
+		panic(fmt.Sprintf("invalid type %T", t))
 	}
 }
 
-func (r *rootPackage) finishNamedAliasType(named *gotypes.Named, alias *types.Alias) bool {
-	underlying, name := named.Underlying(), named.Obj().Name()
+func (r *rootPackage) finishNamedAliasType(named *gotypes.Named, alias *types.Alias, underlying types.Type) bool {
 	p := r.refPkg
-	tp, ok := r.dereferenceType(r.refPkg, underlying)
-	if !ok {
-		fmt.Printf("Finishing WrappedType: %s failed: %s\n", name, underlying)
-		return false
-	}
-	alias.Type = tp
+	alias.Type = underlying
 
 	// Map methods.
 	for i := 0; i < named.NumMethods(); i++ {
@@ -556,6 +643,9 @@ func (r *rootPackage) dereferenceType(p *types.Package, tp gotypes.Type) (types.
 	case *gotypes.Interface:
 		return r.parseInterfaceType(p, et)
 	case *gotypes.Basic:
+		if et.Kind() == gotypes.UnsafePointer {
+			return types.UnsafePointer, true
+		}
 		return types.GetBuiltInType(et.Name())
 	case *gotypes.Slice:
 		st, ok := r.dereferenceType(p, et.Elem())
@@ -649,12 +739,10 @@ func (r *rootPackage) parseInterfaceMethods(p *types.Package, it *gotypes.Interf
 
 func (r *rootPackage) finishNamedStructType(t *types.Struct, named *gotypes.Named) bool {
 	p := r.refPkg
-	if t.TypeName == "Foo" {
-		_ = t.TypeName
-	}
 	r.parseStructFields(p, named.Underlying().(*gotypes.Struct), t)
 
 	t.TypeName = named.Obj().Name()
+
 	// Map methods.
 	for i := 0; i < named.NumMethods(); i++ {
 		xm, ok := r.parseMethod(p, named, i, true)
@@ -721,6 +809,7 @@ func (r *rootPackage) parseMethod(p *types.Package, named astMethoder, i int, ne
 
 func (r *rootPackage) parseSignatureType(p *types.Package, s *gotypes.Signature, xm *types.Function, needReceiver bool) bool {
 	xm.Variadic = s.Variadic()
+
 	if needReceiver && s.Recv() != nil {
 		xm.Receiver = &types.Receiver{Name: s.Recv().Name()}
 		xm.Receiver.Type, _ = r.dereferenceType(p, s.Recv().Type())

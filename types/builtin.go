@@ -13,26 +13,27 @@ var builtIn *Package
 
 // Builtin types definitions.
 var (
-	Error      Type
-	Byte       Type
-	Rune       Type
-	Bool       Type
-	Int        Type
-	Int8       Type
-	Int16      Type
-	Int32      Type
-	Int64      Type
-	Uint       Type
-	Uint8      Type
-	Uint16     Type
-	Uint32     Type
-	Uint64     Type
-	Uintptr    Type
-	Float32    Type
-	Float64    Type
-	Complex64  Type
-	Complex128 Type
-	String     Type
+	Error         Type
+	Byte          Type
+	Rune          Type
+	Bool          Type
+	Int           Type
+	Int8          Type
+	Int16         Type
+	Int32         Type
+	Int64         Type
+	Uint          Type
+	Uint8         Type
+	Uint16        Type
+	Uint32        Type
+	Uint64        Type
+	Uintptr       Type
+	Float32       Type
+	Float64       Type
+	Complex64     Type
+	Complex128    Type
+	String        Type
+	UnsafePointer Type
 )
 
 func init() {
@@ -91,6 +92,8 @@ func init() {
 			Complex128 = st
 		case KindString:
 			String = st
+		case KindUnsafePointer:
+			UnsafePointer = st
 		}
 	}
 
