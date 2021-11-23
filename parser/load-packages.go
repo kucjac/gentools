@@ -77,6 +77,31 @@ func UpdatePackages(p types.PackageMap, cfg LoadConfig) error {
 	return nil
 }
 
+// PackageNameOfDir get package import path via dir
+func PackageNameOfDir(srcDir string) (string, error) {
+	files, err := ioutil.ReadDir(srcDir)
+	if err != nil {
+		return "", err
+	}
+
+	var goFilePath string
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".go") {
+			goFilePath = file.Name()
+			break
+		}
+	}
+	if goFilePath == "" {
+		return "", fmt.Errorf("go source file not found %s", srcDir)
+	}
+
+	packageImport, err := parsePackageImport(srcDir)
+	if err != nil {
+		return "", err
+	}
+	return packageImport, nil
+}
+
 func (p *packageMap) loadPackages(cfg *LoadConfig, pkgNames ...string) ([]*packages.Package, error) {
 	now := time.Now()
 	pkgCfg := &packages.Config{
@@ -224,46 +249,14 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 	initWg.Wait()
 
 	s := r.typesPkg.Scope()
-	typesScope := s
-	type tuple struct {
-		name string
-		tp   types.Type
-	}
+	r.resolveInProgressTypes(s, p)
+	r.resolveIdentAliases()
+	r.defineDeclarations(s, p)
+	r.parseComments(p)
+	fg.Done()
+}
 
-	inProgress := make([]tuple, len(r.typesInProgress))
-	var i int
-	for name, tp := range r.typesInProgress {
-		inProgress[i] = tuple{name, tp}
-		i++
-	}
-
-	for _, tpl := range inProgress {
-		name, tt := tpl.name, tpl.tp
-
-		tp := typesScope.Lookup(name)
-		switch t := tp.Type().(type) {
-		case *gotypes.Named:
-			if _, ok := r.mappedAliases[name]; ok {
-				r.namedAliases[name] = t
-				continue
-			}
-
-			if _, ok := tt.(*types.Alias); ok {
-				continue
-			}
-			if ok := r.finishNamedType(t, tt); !ok {
-				if r.loadConfig.Verbose {
-					fmt.Printf("package: %s, type: %s not mapped\n", p.Path, t.Obj().Name())
-				}
-				continue
-			}
-		case *gotypes.Signature:
-			if !r.finishNamedFunc(t, tt) {
-				continue
-			}
-		}
-	}
-
+func (r *rootPackage) resolveIdentAliases() {
 	for _, file := range r.pkgPkg.Syntax {
 		for _, decl := range file.Decls {
 			dt, ok := decl.(*ast.GenDecl)
@@ -303,7 +296,48 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 			}
 		}
 	}
+}
 
+func (r *rootPackage) resolveInProgressTypes(s *gotypes.Scope, p *types.Package) {
+	typesScope := s
+	type tuple struct {
+		name string
+		tp   types.Type
+	}
+
+	inProgress := make([]tuple, len(r.typesInProgress))
+	var i int
+	for name, tp := range r.typesInProgress {
+		inProgress[i] = tuple{name, tp}
+		i++
+	}
+
+	for _, tpl := range inProgress {
+		name, tt := tpl.name, tpl.tp
+
+		tp := typesScope.Lookup(name)
+		switch t := tp.Type().(type) {
+		case *gotypes.Named:
+			if _, ok := r.mappedAliases[name]; ok {
+				r.namedAliases[name] = t
+				continue
+			}
+
+			if ok := r.finishNamedType(t, tt); !ok {
+				if r.loadConfig.Verbose {
+					fmt.Printf("package: %s, type: %s not mapped\n", p.Path, t.Obj().Name())
+				}
+				continue
+			}
+		case *gotypes.Signature:
+			if !r.finishNamedFunc(t, tt) {
+				continue
+			}
+		}
+	}
+}
+
+func (r *rootPackage) defineDeclarations(s *gotypes.Scope, p *types.Package) {
 	for _, name := range r.declNames {
 		obj := s.Lookup(name)
 		switch ot := obj.(type) {
@@ -331,9 +365,6 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 			continue
 		}
 	}
-
-	r.parseComments(p)
-	fg.Done()
 }
 
 func (r *rootPackage) parseComments(p *types.Package) {
@@ -342,6 +373,7 @@ func (r *rootPackage) parseComments(p *types.Package) {
 		for _, decl := range file.Decls {
 			switch dt := decl.(type) {
 			case *ast.GenDecl:
+			specLoop:
 				for _, spec := range dt.Specs {
 					switch st := spec.(type) {
 					case *ast.TypeSpec:
@@ -359,75 +391,92 @@ func (r *rootPackage) parseComments(p *types.Package) {
 						if comment == "" && dt.Doc != nil {
 							comment = dt.Doc.Text()
 						}
+						if st.Name.Name == "MultiPointerInlineStruct" {
+							func() {}()
+						}
 
-						switch tp := tp.(type) {
-						case *types.Struct:
-							tp.Comment = comment
+					ptrLoop:
+						for {
+							switch tt := tp.(type) {
+							case *types.Pointer:
+								// Dereference the type.
+								tp = tt.PointedType
+								continue ptrLoop
+							case *types.Struct:
+								tt.Comment = comment
+								var structType *ast.StructType
+								temp := st.Type
+							structLoop:
+								for {
+									switch tempType := temp.(type) {
+									case *ast.Ident:
+									case *ast.StarExpr:
+										temp = tempType.X
+									case *ast.SelectorExpr:
+										temp = tempType.X
+									case *ast.StructType:
+										structType = tempType
+										break structLoop
+									default:
+										break structLoop
+									}
+								}
+								if structType == nil {
+									if r.loadConfig.Verbose {
+										fmt.Printf("getting ast interface type failed: '%T', '%v'\n", temp, temp)
+									}
+									continue specLoop
+								}
 
-							var structType *ast.StructType
-							temp := st.Type
-						structLoop:
-							for {
-								switch tempType := temp.(type) {
-								case *ast.SelectorExpr:
-									temp = tempType.X
-								case *ast.StructType:
-									structType = tempType
-									break structLoop
-								default:
-									break structLoop
-								}
-							}
-							if structType == nil {
-								if r.loadConfig.Verbose {
-									fmt.Printf("getting ast interface type failed: '%T', '%v'\n", temp, temp)
-								}
-								continue
-							}
+								for j, field := range structType.Fields.List {
+									var fc string
+									if field.Doc != nil {
+										fc = field.Doc.Text()
+									}
 
-							for j, field := range structType.Fields.List {
-								var fc string
-								if field.Doc != nil {
-									fc = field.Doc.Text()
+									tt.Fields[j].Comment = fc
+								}
+							case *types.Interface:
+								tt.Comment = comment
+
+								var interfaceType *ast.InterfaceType
+								temp := st.Type
+							interfaceLoop:
+								for {
+									switch tempType := temp.(type) {
+									case *ast.StarExpr:
+										temp = tempType.X
+									case *ast.SelectorExpr:
+										temp = tempType.X
+									case *ast.InterfaceType:
+										interfaceType = tempType
+										break interfaceLoop
+									default:
+										break interfaceLoop
+									}
+								}
+								if interfaceType == nil {
+									if r.loadConfig.Verbose {
+										fmt.Printf("getting ast interface type failed: '%T', '%v - Package: %s'\n", temp, temp, r.pkgPkg.Name)
+									}
+									continue specLoop
 								}
 
-								tp.Fields[j].Comment = fc
-							}
-						case *types.Interface:
-							tp.Comment = comment
-
-							var interfaceType *ast.InterfaceType
-							temp := st.Type
-						interfaceLoop:
-							for {
-								switch tempType := temp.(type) {
-								case *ast.SelectorExpr:
-									temp = tempType.X
-								case *ast.InterfaceType:
-									interfaceType = tempType
-									break interfaceLoop
-								default:
-									break interfaceLoop
+								for j, method := range interfaceType.Methods.List {
+									var fc string
+									if method.Doc != nil {
+										fc = method.Doc.Text()
+									}
+									tt.Methods[j].Comment = fc
 								}
+							case *types.Alias:
+								tt.Comment = comment
+								tp = tt.Type
+								continue ptrLoop
+							case *types.Function:
+								tt.Comment = comment
 							}
-							if interfaceType == nil {
-								if r.loadConfig.Verbose {
-									fmt.Printf("getting ast interface type failed: '%T', '%v - Package: %s'\n", temp, temp, r.pkgPkg.Name)
-								}
-								continue
-							}
-
-							for j, method := range interfaceType.Methods.List {
-								var fc string
-								if method.Doc != nil {
-									fc = method.Doc.Text()
-								}
-								tp.Methods[j].Comment = fc
-							}
-						case *types.Alias:
-							tp.Comment = comment
-						case *types.Function:
-							tp.Comment = comment
+							break ptrLoop
 						}
 					case *ast.ValueSpec:
 						if st.Doc == nil {
@@ -518,10 +567,20 @@ func (r *rootPackage) scaffoldPackageObjects() {
 				if !ok {
 					continue
 				}
+				tsType := ts.Type
 
-				switch ts.Type.(type) {
-				case *ast.Ident, *ast.StarExpr, *ast.ArrayType, *ast.SelectorExpr, *ast.MapType, *ast.ChanType:
-					r.mappedAliases[ts.Name.Name] = struct{}{}
+				// This is a workaround only for the invalid type wrapper.
+			outLoop:
+				for {
+					switch tt := tsType.(type) {
+					case *ast.Ident, *ast.SelectorExpr:
+						r.mappedAliases[ts.Name.Name] = struct{}{}
+						break outLoop
+					case *ast.StarExpr:
+						tsType = tt.X
+					default:
+						break outLoop
+					}
 				}
 			}
 		}
@@ -544,6 +603,7 @@ func (r *rootPackage) scaffoldPackageObjects() {
 			if !ok {
 				continue
 			}
+
 			switch t := named.Underlying().(type) {
 			case *gotypes.Interface:
 				it := &types.Interface{
@@ -565,9 +625,7 @@ func (r *rootPackage) scaffoldPackageObjects() {
 					AliasName: name,
 				}
 				r.setTypeInProgress(name, wt)
-				continue
 			}
-			continue
 		case *gotypes.Func:
 			sig, ok := ot.Type().(*gotypes.Signature)
 			if !ok {
@@ -598,7 +656,11 @@ func (r *rootPackage) finishNamedType(named *gotypes.Named, t types.Type) bool {
 	case *types.Interface:
 		return r.finishNamedInterfaceType(named, ot)
 	case *types.Alias:
-		return false
+		underlying, ok := r.dereferenceType(r.refPkg, named.Underlying())
+		if !ok {
+			panic(fmt.Sprintf("no underlying alias type found: %v", named.Underlying()))
+		}
+		return r.finishNamedAliasType(named, ot, underlying)
 	default:
 		panic(fmt.Sprintf("invalid type %T", t))
 	}
@@ -784,7 +846,7 @@ func (r *rootPackage) parseStructFields(p *types.Package, ot *gotypes.Struct, t 
 		}
 		t.Fields[i] = sField
 	}
-	return false
+	return true
 }
 
 type astMethoder interface {
@@ -852,31 +914,6 @@ func (r *rootPackage) finishNamedFunc(st *gotypes.Signature, t types.Type) bool 
 		return false
 	}
 	return true
-}
-
-// PackageNameOfDir get package import path via dir
-func PackageNameOfDir(srcDir string) (string, error) {
-	files, err := ioutil.ReadDir(srcDir)
-	if err != nil {
-		return "", err
-	}
-
-	var goFilePath string
-	for _, file := range files {
-		if !file.IsDir() && strings.HasSuffix(file.Name(), ".go") {
-			goFilePath = file.Name()
-			break
-		}
-	}
-	if goFilePath == "" {
-		return "", fmt.Errorf("go source file not found %s", srcDir)
-	}
-
-	packageImport, err := parsePackageImport(srcDir)
-	if err != nil {
-		return "", err
-	}
-	return packageImport, nil
 }
 
 var errOutsideGoPath = errors.New("source directory is outside GOPATH")

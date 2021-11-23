@@ -155,44 +155,7 @@ func TestParse(t *testing.T) {
 	if !ok {
 		t.Fatal("type Enumerated is not found")
 	}
-	t.Run("Enumerated", func(t *testing.T) {
-		enumAlias, ok := enum.(*types.Alias)
-		if !ok {
-			t.Fatal("type Enumerated is not an Alias")
-		}
-		if enumAlias.Kind() != types.KindInt {
-			t.Fatal("type Enumerated kind is not a KindInt")
-		}
-
-		enumOne, ok := pkg.Declarations["EnumeratedOne"]
-		if !ok {
-			t.Fatal("no EnumeratedOne declaration found in the package")
-		}
-		if !enumOne.Type.Equal(enum) {
-			t.Fatalf("EnumeratedOne type is not Enumerated: %v", enumOne.Type)
-		}
-
-		if enumOne.Comment != "EnumeratedOne defines a first enumerated type value.\n" {
-			t.Fatalf("EnumeratedOne comment doesn't match: '%s'", enumOne.Comment)
-		}
-
-		if !enumOne.Constant {
-			t.Fatal("EnumeratedOne should be a constant")
-		}
-
-		if enumOne.Val == nil {
-			t.Fatal("EnumeratedOne constant value should be defined")
-		}
-
-		if enumOne.Val.Kind() != constant.Int || enumOne.Val.String() != "1" {
-			t.Fatal("EnumeratedOne constant value should be of kind Integer and take value of 1")
-		}
-
-		v, ok := enumOne.ConstValue().(int)
-		if !ok || v != int(1) {
-			t.Fatalf("EnumeratedOne constant value doesn't match: %v", enumOne.ConstValue())
-		}
-	})
+	t.Run("Enumerated", testEnumerated(enum, pkg))
 
 	fooID, ok := pkg.GetType("FooID")
 	if !ok {
@@ -204,150 +167,55 @@ func TestParse(t *testing.T) {
 		t.Fatal("type FooAlias not found")
 	}
 
-	t.Run("FooAlias", func(t *testing.T) {
-		alias, isAlias := fooAlias.(*types.Alias)
-		if !isAlias {
-			t.Fatalf("type FooAlias is expected to be an alias but is: %T", fooAlias)
-		}
-		if alias.Type == nil {
-			t.Fatal("type FooAlias type is nil")
-		}
-		if !alias.Type.Equal(fooType) {
-			t.Fatal("foo alias type doesn't match Foo type")
-		}
-	})
+	t.Run("FooAlias", testFooAlias(fooAlias, fooType))
 
-	t.Run("FooPtrAlias", func(t *testing.T) {
-		tp, ok := pkg.GetType("FooPtrAlias")
+	t.Run("FooPtrAlias", testFooPtrAlias(pkg, fooType))
+
+	t.Run("Weird", testWeird(pkg))
+
+	t.Run("WeirdStruct", testWeirdStruct(pkg))
+
+	t.Run("FooID", testFooID(fooID, pkgs))
+
+	t.Run("ArrayWrapper", testArrayWrapper(pkg))
+
+	t.Run("FuncWrapper", testFuncWrapper(pkg, pkgs))
+
+	t.Run("MultiPointerInlineStruct", func(t *testing.T) {
+		tp, ok := pkgs.TypeOf("MultiPointerInlineStruct", pkg)
 		if !ok {
-			t.Fatal("FooPtrAlias is not found within packages")
+			t.Fatal("no MultiPointerInlineStruct type found")
 		}
 
-		alias, ok := tp.(*types.Alias)
-		if !ok {
-			t.Fatal("FooPtrAlias is expected to be an *types.Alias")
-		}
-
-		if !alias.Type.Equal(types.PointerTo(fooType)) {
-			t.Fatal("FooPtrAlias is expected to be pointer to Foo type")
-		}
-	})
-
-	t.Run("Weird", func(t *testing.T) {
-		wd, ok := pkg.GetType("Weird")
-		if !ok {
-			t.Fatal("cant find type Weird")
-		}
-
-		alias, ok := wd.(*types.Alias)
-		if !ok {
-			t.Fatal("Weird is expected to be *types.Alias")
-		}
-
-		if !alias.Type.Equal(types.Int) {
-			t.Fatal("Weird type is expected to be Int")
-		}
-	})
-
-	t.Run("WeirdStruct", func(t *testing.T) {
-		tp, ok := pkg.GetType("WeirdStruct")
-		if !ok {
-			t.Fatal("WeirdStruct is not found")
-		}
-
-		st, ok := tp.(*types.Struct)
-		if !ok {
-			t.Fatal("WeirdStruct is expected to be a structure")
-		}
-
-		if st.Comment != "WeirdStruct docs.\n" {
-			t.Errorf("WeirdStruct comment doesn't match: %s", st.Comment)
-		}
-
-		if len(st.Fields) != 1 {
-			t.Fatal("WeirdStruct is expected to contain one field")
-		}
-
-		nm := st.Fields[0]
-		if nm.Comment != "Name doc.\n" {
-			t.Errorf("WeirdStruct.Name field comment doesn't match: %s", nm.Comment)
-		}
-	})
-
-	t.Run("FooID", func(t *testing.T) {
-		if k := fooID.Kind(); k != types.KindInt64 {
-			t.Errorf("type FooID is not of a KindInt64 but: %v", k)
-		}
-
-		tm, ok := pkgs.TypeOf("encoding.TextMarshaler", nil)
-		if !ok {
-			t.Fatalf("type encoding.TextMarshaler not found")
-		}
-
-		tu, ok := pkgs.TypeOf("encoding.TextUnmarshaler", nil)
-		if !ok {
-			t.Fatalf("type encoding.TextUnmarshaler not found")
-		}
-
-		tmInterface, ok := tm.(*types.Interface)
-		if !ok {
-			t.Fatalf("type encoding.TextMarshaler is not an interface, but: %T", tm)
-		}
-
-		tuInterface, ok := tu.(*types.Interface)
-		if !ok {
-			t.Fatalf("type encoding.TextUnmarshaler is not an interface, but: %T", tm)
-		}
-
-		// The non pointer type FooID should implement encoding.TextMarshaler.
-		if !types.Implements(fooID, tmInterface) {
-			t.Error("type FooID doesn't implement encoding.TextMarshaler interface")
-		}
-
-		// But non pointer FooID should not implement encoding.TextUnmarshaler.
-		if types.Implements(fooID, tuInterface) {
-			t.Error("type FooID should not implement encoding.TextUnmarshaler interface")
-		}
-
-		// The Pointer to FooID - *FooID, should implement encoding.TextUnmarshaler interface.
-		ptrFooID := types.PointerTo(fooID)
-		if !types.Implements(ptrFooID, tuInterface) {
-			t.Error("pointer to FooID should implement encoding.TextUnmarshaler interface")
-		}
-
-		// And also it should implement encoding.TextMarshaler interface.
-		if !types.Implements(ptrFooID, tmInterface) {
-			t.Errorf("pointer to FooID should implement  encoding.TextMarshaler interface")
-		}
-
-		alias := fooID.(*types.Alias)
-		for _, method := range alias.Methods {
-			switch method.FuncName {
-			case "UnmarshalText":
-				if method.Comment != "UnmarshalText implements encoding.TextUnmarshaler interface.\n" {
-					t.Errorf("fooID UnmarshalText comment doesn't match: %s", method.Comment)
-				}
-			case "MarshalText":
-				if method.Comment != "MarshalText implements encoding.TextMarshaler interface.\n" {
-					t.Errorf("fooID MarshalText comment doesn't match: %s", method.Comment)
-				}
+		var pointerCount int
+	pointerLoop:
+		for {
+			switch tpp := tp.(type) {
+			case *types.Alias:
+				tp = tpp.Type
+			case *types.Pointer:
+				tp = tpp.PointedType
+				pointerCount++
+			default:
+				break pointerLoop
 			}
 		}
-	})
-
-	t.Run("ArrayWrapper", func(t *testing.T) {
-		aw, ok := pkg.GetType("ArrayWrapper")
-		if !ok {
-			t.Fatal("no ArrayWrapper type found")
+		if pointerCount != 6 {
+			t.Fatalf("there should be exactly 6 pointers to the struct but are: %d", pointerCount)
 		}
-
-		alias, ok := aw.(*types.Alias)
+		st, ok := tp.(*types.Struct)
 		if !ok {
-			t.Fatal("ArrayWrapper is expected to be a wrapper")
+			t.Fatalf("expected type to be a Struct but is: %T", tp)
 		}
-
-		if !alias.Type.Equal(types.ArrayOf(types.Byte, 16)) {
-			t.Fatalf("ArrayWrapper type is not [16]byte: %v", alias.Type)
+		if len(st.Fields) != 1 {
+			t.Fatal("struct expected to have exactly one field")
+		}
+		field := st.Fields[0]
+		if field.Name != "Field" {
+			t.Errorf("field name is expected to be 'Field' but is: %s", field.Name)
+		}
+		if field.Comment != "Field test comment.\n" {
+			t.Errorf("Field comment doesn't match: %s", field.Comment)
 		}
 	})
 
@@ -377,185 +245,65 @@ func TestParse(t *testing.T) {
 		t.Fatalf("InheritMe is expected to be *types.Interface but is: %T", inheritMe)
 	}
 
-	t.Run("InheritMe", func(t *testing.T) {
-		i := inheritMeInterface
-		// TODO: implement comment matching.
-		if i.Comment != "InheritMe is an interface that will be inherited.\n" {
-			t.Errorf("InheritMe comment not match: '%s'", i.Comment)
+	t.Run("InheritMe", testInheritMe(inheritMeInterface))
+
+	t.Run("NotEmpty", testNotEmptyInterface(notEmptyInterface, pkgs))
+
+	t.Run("Foo", testFoo(fooStruct, enum, barStruct))
+
+	t.Run("Bar", testBar(barStruct, pkgs, notEmpty))
+}
+
+func testFuncWrapper(pkg *types.Package, pkgs types.PackageMap) func(t *testing.T) {
+	return func(t *testing.T) {
+		fw, ok := pkg.GetType("FuncWrapper")
+		if !ok {
+			t.Fatal("FuncWrapper undefined")
 		}
 
-		if len(i.Methods) != 1 {
-			t.Fatalf("InheritMe should have exactly one method but have: %d", len(i.Methods))
+		alias, ok := fw.(*types.Alias)
+		if !ok {
+			t.Fatalf("FuncWrapper type is not a Alias: %T", fw)
 		}
 
-		if i.Methods[0].FuncName != "Inherited" {
-			t.Errorf("InhertMe method is not 'Inherited', '%s'", i.Methods[0].FuncName)
-		}
-	})
-
-	t.Run("NotEmpty", func(t *testing.T) {
-		i := notEmptyInterface
-		if len(i.Methods) != 2 {
-			t.Fatalf("NotEmpty interface expected to have two methods but have: %d", len(i.Methods))
-		}
-		m := i.Methods[0]
-		if m.FuncName != "Call" {
-			t.Errorf("NotEmpty method name is not equal to Call: %v", m.FuncName)
-		}
-		if len(m.In) != 2 {
-			t.Fatalf("NotEmpty Call method expected to have two argument but have: %v", len(m.In))
-		}
-		ctx := m.In[0]
-		if ctx.Name != "ctx" {
-			t.Errorf("first argument name is not equal to 'ctx': %v", ctx.Name)
-		}
-		ctxPkg := pkgs.MustGetByPath("context")
-		ctxInterface := ctxPkg.MustGetType("Context")
-		if !ctx.Type.Equal(ctxInterface) {
-			t.Errorf("first argument type expected to be context.Context, but is: %v", ctx.Type)
+		aliasedFunc, ok := alias.Type.(*types.Function)
+		if !ok {
+			t.Fatalf("FuncWrapper alias type is expected to be function: %T", alias.Type)
 		}
 
-		options := m.In[1]
-		if options.Name != "options" {
-			t.Errorf("options argument name is not 'options': %v", options.Name)
-		}
-		if !options.Type.Equal(types.SliceOf(types.String)) {
-			t.Errorf("options argument type is not '[]string' but: %v", options.Type)
-		}
-		if !m.Variadic {
-			t.Error("method has '...' in last argument - expected to be variadic")
+		if len(aliasedFunc.In) != 1 {
+			t.Fatalf("Aliased function input arguments length should be 1 but is :%d", len(aliasedFunc.In))
 		}
 
-		if len(m.Out) != 2 {
-			t.Fatalf("Call output expected to have two variables returned but have: %d", len(m.Out))
+		if len(aliasedFunc.Out) != 1 {
+			t.Fatalf("Aliased function output variables length should be 1 but is :%d", len(aliasedFunc.Out))
 		}
 
-		n := m.Out[0]
-		if n.Name != "n" {
-			t.Errorf("Call first returned variable name is not 'n': %v", n.Name)
+		in := aliasedFunc.In[0]
+		writer, ok := pkgs.TypeOf("io.Writer", pkg)
+		if !ok {
+			t.Fatalf("cannot get io.Writer type")
 		}
-		if n.Type != types.Int {
-			t.Errorf("Call first returned variable type is not Int: %v", n.Type)
+		if !in.Type.Equal(writer) {
+			t.Error("input is expected to be io.Writer")
 		}
-		err := m.Out[1]
-		if err.Name != "err" {
-			t.Errorf("Call second returned variable name is not 'err': %v", err.Name)
-		}
-		if err.Type != types.Error {
-			t.Errorf("Call second returned variable is not 'error': %v", err.Type)
+		out := aliasedFunc.Out[0]
+		if !out.Type.Equal(types.Error) {
+			t.Errorf("output is expected to be of type error but is: %v", out.Type)
 		}
 
-		inherited := i.Methods[1]
-		if inherited.FuncName != "Inherited" {
-			t.Errorf("NotEmpty should contain Inherited method")
+		if len(alias.Methods) != 1 {
+			t.Fatalf("alias is expected to have exactly one method: %d", len(alias.Methods))
 		}
-	})
-
-	t.Run("Foo", func(t *testing.T) {
-		for _, field := range fooStruct.Fields {
-			switch field.Name {
-			case "ID":
-				ftName := field.Type.Name(false, "")
-				if ftName != "FooID" {
-					t.Errorf("field ID is not of type FooID, current type %s", ftName)
-				}
-
-				if field.Type.Kind() != types.KindInt64 {
-					t.Errorf("FooID type is not of kind int64, %s", field.Type.Kind())
-				}
-				if tag := field.Tag.Get("json"); tag != "id" {
-					t.Errorf("field 'ID', tag json is not equal to 'id', %v", tag)
-				}
-				if field.Comment != "ID is the foo field identifier.\n" {
-					t.Errorf("field: 'ID', comment not match. Expected: 'ID is the foo field identifier.\\n' is '%s'", field.Comment)
-				}
-			case "String":
-				ftName := field.Type.Name(false, "")
-				if ftName != "string" {
-					t.Errorf("field 'String' is not of type string, current type %s", ftName)
-				}
-				if field.Type.Kind() != types.KindString {
-					t.Errorf("field 'String' type is not of kind string, %s", field.Type.Kind())
-				}
-				if tag := field.Tag.Get("custom"); tag != "name" {
-					t.Errorf("field 'String', tag custom is not equal to 'name', %v", tag)
-				}
-			case "CustomName":
-				ftName := field.Type.Name(false, "")
-				if ftName != "string" {
-					t.Errorf("field 'CustomName' is not of type string, current type %s", ftName)
-				}
-				if field.Type.Kind() != types.KindString {
-					t.Errorf("field 'CustomName' type is not of kind string, %s", field.Type.Kind())
-				}
-			case "Bool":
-				ftName := field.Type.Name(false, "")
-				if ftName != "bool" {
-					t.Errorf("field 'Bool' is not of type bool, current type %s", ftName)
-				}
-				if field.Type.Kind() != types.KindBool {
-					t.Errorf("field 'Bool' type is not of kind bool, %s", field.Type.Kind())
-				}
-			case "Enumerated":
-				if field.Type != enum {
-					t.Errorf("field 'Enumerated' is not of type Enumerated, current type %s", field.Type)
-				}
-			case "Slice":
-				sl, ok := field.Type.(*types.Array)
-				if !ok {
-					t.Errorf("field 'Slice' is not of types Array, %T", field.Type)
-					continue
-				}
-
-				if sl.ArrayKind != types.KindSlice {
-					t.Errorf("slice type is not types.KindSlice, is: %s", sl.ArrayKind)
-				}
-				if sl.ArraySize != 0 {
-					t.Errorf("slice size should be zero but is: %v", sl.ArraySize)
-				}
-
-				if sl.Type != types.String {
-					t.Errorf("slice base type is not a string, is: %s", sl.Type)
-				}
-			case "Float64":
-				ftName := field.Type.Name(false, "")
-				if ftName != "float64" {
-					t.Errorf("field 'Float64' is not of type floa64, current type %s", ftName)
-				}
-				if field.Type.Kind() != types.KindFloat64 {
-					t.Errorf("field 'Float64' type is not of kind bool, %s", field.Type.Kind())
-				}
-			case "Duration":
-				a, ok := field.Type.(*types.Alias)
-				if !ok {
-					t.Errorf("expected field 'Duration' type to be an alias but is: %T", field.Type)
-					continue
-				}
-				if a.AliasName != "Duration" {
-					t.Errorf("alias name is expected to be Duration but is: %s", a.AliasName)
-				}
-				if a.Kind() != types.KindInt64 {
-					t.Errorf("time.Duration kind expected to be int64, but is: '%v", a.Kind())
-				}
-				if zero := a.Zero(true, "github.com/kucjac/gentools/parser"); zero != "time.Duration(0)" {
-					t.Errorf("time.Duration zero expected to be time.Duration(0), but is: %v", zero)
-				}
-			case "Bar":
-				if field.Type.Kind() != types.KindPtr {
-					t.Errorf("field 'Bar' expected to be of kind 'Ptr' but is: %v", field.Type.Kind())
-				}
-				tp := field.Type.Elem()
-
-				if tp != barStruct {
-					t.Errorf("field 'Bar' elem expected to be a type Bar, but is: %v", tp)
-				}
-			default:
-				t.Fatalf("unknown field name: '%s'", field.Name)
-			}
+		am := alias.Methods[0]
+		if am.FuncName != "Do" {
+			t.Errorf("alias method is expected to have a name 'Do' but have: '%s'", am.FuncName)
 		}
-	})
+	}
+}
 
-	t.Run("Bar", func(t *testing.T) {
+func testBar(barStruct *types.Struct, pkgs types.PackageMap, notEmpty types.Type) func(t *testing.T) {
+	return func(t *testing.T) {
 		for _, field := range barStruct.Fields {
 			switch field.Name {
 			case "Map":
@@ -670,5 +418,389 @@ func TestParse(t *testing.T) {
 				}
 			}
 		}
-	})
+	}
+}
+
+func testFoo(fooStruct *types.Struct, enum types.Type, barStruct *types.Struct) func(t *testing.T) {
+	return func(t *testing.T) {
+		for _, field := range fooStruct.Fields {
+			switch field.Name {
+			case "ID":
+				ftName := field.Type.Name(false, "")
+				if ftName != "FooID" {
+					t.Errorf("field ID is not of type FooID, current type %s", ftName)
+				}
+
+				if field.Type.Kind() != types.KindInt64 {
+					t.Errorf("FooID type is not of kind int64, %s", field.Type.Kind())
+				}
+				if tag := field.Tag.Get("json"); tag != "id" {
+					t.Errorf("field 'ID', tag json is not equal to 'id', %v", tag)
+				}
+				if field.Comment != "ID is the foo field identifier.\n" {
+					t.Errorf("field: 'ID', comment not match. Expected: 'ID is the foo field identifier.\\n' is '%s'", field.Comment)
+				}
+			case "String":
+				ftName := field.Type.Name(false, "")
+				if ftName != "string" {
+					t.Errorf("field 'String' is not of type string, current type %s", ftName)
+				}
+				if field.Type.Kind() != types.KindString {
+					t.Errorf("field 'String' type is not of kind string, %s", field.Type.Kind())
+				}
+				if tag := field.Tag.Get("custom"); tag != "name" {
+					t.Errorf("field 'String', tag custom is not equal to 'name', %v", tag)
+				}
+			case "CustomName":
+				ftName := field.Type.Name(false, "")
+				if ftName != "string" {
+					t.Errorf("field 'CustomName' is not of type string, current type %s", ftName)
+				}
+				if field.Type.Kind() != types.KindString {
+					t.Errorf("field 'CustomName' type is not of kind string, %s", field.Type.Kind())
+				}
+			case "Bool":
+				ftName := field.Type.Name(false, "")
+				if ftName != "bool" {
+					t.Errorf("field 'Bool' is not of type bool, current type %s", ftName)
+				}
+				if field.Type.Kind() != types.KindBool {
+					t.Errorf("field 'Bool' type is not of kind bool, %s", field.Type.Kind())
+				}
+			case "Enumerated":
+				if field.Type != enum {
+					t.Errorf("field 'Enumerated' is not of type Enumerated, current type %s", field.Type)
+				}
+			case "Slice":
+				sl, ok := field.Type.(*types.Array)
+				if !ok {
+					t.Errorf("field 'Slice' is not of types Array, %T", field.Type)
+					continue
+				}
+
+				if sl.ArrayKind != types.KindSlice {
+					t.Errorf("slice type is not types.KindSlice, is: %s", sl.ArrayKind)
+				}
+				if sl.ArraySize != 0 {
+					t.Errorf("slice size should be zero but is: %v", sl.ArraySize)
+				}
+
+				if sl.Type != types.String {
+					t.Errorf("slice base type is not a string, is: %s", sl.Type)
+				}
+			case "Float64":
+				ftName := field.Type.Name(false, "")
+				if ftName != "float64" {
+					t.Errorf("field 'Float64' is not of type floa64, current type %s", ftName)
+				}
+				if field.Type.Kind() != types.KindFloat64 {
+					t.Errorf("field 'Float64' type is not of kind bool, %s", field.Type.Kind())
+				}
+			case "Duration":
+				a, ok := field.Type.(*types.Alias)
+				if !ok {
+					t.Errorf("expected field 'Duration' type to be an alias but is: %T", field.Type)
+					continue
+				}
+				if a.AliasName != "Duration" {
+					t.Errorf("alias name is expected to be Duration but is: %s", a.AliasName)
+				}
+				if a.Kind() != types.KindInt64 {
+					t.Errorf("time.Duration kind expected to be int64, but is: '%v", a.Kind())
+				}
+				if zero := a.Zero(true, "github.com/kucjac/gentools/parser"); zero != "time.Duration(0)" {
+					t.Errorf("time.Duration zero expected to be time.Duration(0), but is: %v", zero)
+				}
+			case "Bar":
+				if field.Type.Kind() != types.KindPtr {
+					t.Errorf("field 'Bar' expected to be of kind 'Ptr' but is: %v", field.Type.Kind())
+				}
+				tp := field.Type.Elem()
+
+				if tp != barStruct {
+					t.Errorf("field 'Bar' elem expected to be a type Bar, but is: %v", tp)
+				}
+			default:
+				t.Fatalf("unknown field name: '%s'", field.Name)
+			}
+		}
+	}
+}
+
+func testEnumerated(enum types.Type, pkg *types.Package) func(t *testing.T) {
+	return func(t *testing.T) {
+		enumAlias, ok := enum.(*types.Alias)
+		if !ok {
+			t.Fatal("type Enumerated is not an Alias")
+		}
+		if enumAlias.Kind() != types.KindInt {
+			t.Fatal("type Enumerated kind is not a KindInt")
+		}
+
+		enumOne, ok := pkg.Declarations["EnumeratedOne"]
+		if !ok {
+			t.Fatal("no EnumeratedOne declaration found in the package")
+		}
+		if !enumOne.Type.Equal(enum) {
+			t.Fatalf("EnumeratedOne type is not Enumerated: %v", enumOne.Type)
+		}
+
+		if enumOne.Comment != "EnumeratedOne defines a first enumerated type value.\n" {
+			t.Fatalf("EnumeratedOne comment doesn't match: '%s'", enumOne.Comment)
+		}
+
+		if !enumOne.Constant {
+			t.Fatal("EnumeratedOne should be a constant")
+		}
+
+		if enumOne.Val == nil {
+			t.Fatal("EnumeratedOne constant value should be defined")
+		}
+
+		if enumOne.Val.Kind() != constant.Int || enumOne.Val.String() != "1" {
+			t.Fatal("EnumeratedOne constant value should be of kind Integer and take value of 1")
+		}
+
+		v, ok := enumOne.ConstValue().(int)
+		if !ok || v != int(1) {
+			t.Fatalf("EnumeratedOne constant value doesn't match: %v", enumOne.ConstValue())
+		}
+	}
+}
+
+func testFooAlias(fooAlias types.Type, fooType types.Type) func(t *testing.T) {
+	return func(t *testing.T) {
+		alias, isAlias := fooAlias.(*types.Alias)
+		if !isAlias {
+			t.Fatalf("type FooAlias is expected to be an alias but is: %T", fooAlias)
+		}
+		if alias.Type == nil {
+			t.Fatal("type FooAlias type is nil")
+		}
+		if !alias.Type.Equal(fooType) {
+			t.Fatal("foo alias type doesn't match Foo type")
+		}
+	}
+}
+
+func testFooPtrAlias(pkg *types.Package, fooType types.Type) func(t *testing.T) {
+	return func(t *testing.T) {
+		tp, ok := pkg.GetType("FooPtrAlias")
+		if !ok {
+			t.Fatal("FooPtrAlias is not found within packages")
+		}
+
+		alias, ok := tp.(*types.Alias)
+		if !ok {
+			t.Fatal("FooPtrAlias is expected to be an *types.Alias")
+		}
+
+		if !alias.Type.Equal(types.PointerTo(fooType)) {
+			t.Fatal("FooPtrAlias is expected to be pointer to Foo type")
+		}
+	}
+}
+
+func testWeird(pkg *types.Package) func(t *testing.T) {
+	return func(t *testing.T) {
+		wd, ok := pkg.GetType("Weird")
+		if !ok {
+			t.Fatal("cant find type Weird")
+		}
+
+		alias, ok := wd.(*types.Alias)
+		if !ok {
+			t.Fatal("Weird is expected to be *types.Alias")
+		}
+
+		if !alias.Type.Equal(types.Int) {
+			t.Fatal("Weird type is expected to be Int")
+		}
+	}
+}
+
+func testWeirdStruct(pkg *types.Package) func(t *testing.T) {
+	return func(t *testing.T) {
+		tp, ok := pkg.GetType("WeirdStruct")
+		if !ok {
+			t.Fatal("WeirdStruct is not found")
+		}
+
+		st, ok := tp.(*types.Struct)
+		if !ok {
+			t.Fatal("WeirdStruct is expected to be a structure")
+		}
+
+		if st.Comment != "WeirdStruct docs.\n" {
+			t.Errorf("WeirdStruct comment doesn't match: %s", st.Comment)
+		}
+
+		if len(st.Fields) != 1 {
+			t.Fatal("WeirdStruct is expected to contain one field")
+		}
+
+		nm := st.Fields[0]
+		if nm.Comment != "Name doc.\n" {
+			t.Errorf("WeirdStruct.Name field comment doesn't match: %s", nm.Comment)
+		}
+	}
+}
+
+func testNotEmptyInterface(notEmptyInterface *types.Interface, pkgs types.PackageMap) func(t *testing.T) {
+	return func(t *testing.T) {
+		i := notEmptyInterface
+		if len(i.Methods) != 2 {
+			t.Fatalf("NotEmpty interface expected to have two methods but have: %d", len(i.Methods))
+		}
+		m := i.Methods[0]
+		if m.FuncName != "Call" {
+			t.Errorf("NotEmpty method name is not equal to Call: %v", m.FuncName)
+		}
+		if len(m.In) != 2 {
+			t.Fatalf("NotEmpty Call method expected to have two argument but have: %v", len(m.In))
+		}
+		ctx := m.In[0]
+		if ctx.Name != "ctx" {
+			t.Errorf("first argument name is not equal to 'ctx': %v", ctx.Name)
+		}
+		ctxPkg := pkgs.MustGetByPath("context")
+		ctxInterface := ctxPkg.MustGetType("Context")
+		if !ctx.Type.Equal(ctxInterface) {
+			t.Errorf("first argument type expected to be context.Context, but is: %v", ctx.Type)
+		}
+
+		options := m.In[1]
+		if options.Name != "options" {
+			t.Errorf("options argument name is not 'options': %v", options.Name)
+		}
+		if !options.Type.Equal(types.SliceOf(types.String)) {
+			t.Errorf("options argument type is not '[]string' but: %v", options.Type)
+		}
+		if !m.Variadic {
+			t.Error("method has '...' in last argument - expected to be variadic")
+		}
+
+		if len(m.Out) != 2 {
+			t.Fatalf("Call output expected to have two variables returned but have: %d", len(m.Out))
+		}
+
+		n := m.Out[0]
+		if n.Name != "n" {
+			t.Errorf("Call first returned variable name is not 'n': %v", n.Name)
+		}
+		if n.Type != types.Int {
+			t.Errorf("Call first returned variable type is not Int: %v", n.Type)
+		}
+		err := m.Out[1]
+		if err.Name != "err" {
+			t.Errorf("Call second returned variable name is not 'err': %v", err.Name)
+		}
+		if err.Type != types.Error {
+			t.Errorf("Call second returned variable is not 'error': %v", err.Type)
+		}
+
+		inherited := i.Methods[1]
+		if inherited.FuncName != "Inherited" {
+			t.Errorf("NotEmpty should contain Inherited method")
+		}
+	}
+}
+
+func testInheritMe(inheritMeInterface *types.Interface) func(t *testing.T) {
+	return func(t *testing.T) {
+		i := inheritMeInterface
+		// TODO: implement comment matching.
+		if i.Comment != "InheritMe is an interface that will be inherited.\n" {
+			t.Errorf("InheritMe comment not match: '%s'", i.Comment)
+		}
+
+		if len(i.Methods) != 1 {
+			t.Fatalf("InheritMe should have exactly one method but have: %d", len(i.Methods))
+		}
+
+		if i.Methods[0].FuncName != "Inherited" {
+			t.Errorf("InhertMe method is not 'Inherited', '%s'", i.Methods[0].FuncName)
+		}
+	}
+}
+
+func testFooID(fooID types.Type, pkgs types.PackageMap) func(t *testing.T) {
+	return func(t *testing.T) {
+		if k := fooID.Kind(); k != types.KindInt64 {
+			t.Errorf("type FooID is not of a KindInt64 but: %v", k)
+		}
+
+		tm, ok := pkgs.TypeOf("encoding.TextMarshaler", nil)
+		if !ok {
+			t.Fatalf("type encoding.TextMarshaler not found")
+		}
+
+		tu, ok := pkgs.TypeOf("encoding.TextUnmarshaler", nil)
+		if !ok {
+			t.Fatalf("type encoding.TextUnmarshaler not found")
+		}
+
+		tmInterface, ok := tm.(*types.Interface)
+		if !ok {
+			t.Fatalf("type encoding.TextMarshaler is not an interface, but: %T", tm)
+		}
+
+		tuInterface, ok := tu.(*types.Interface)
+		if !ok {
+			t.Fatalf("type encoding.TextUnmarshaler is not an interface, but: %T", tm)
+		}
+
+		// The non pointer type FooID should implement encoding.TextMarshaler.
+		if !types.Implements(fooID, tmInterface) {
+			t.Error("type FooID doesn't implement encoding.TextMarshaler interface")
+		}
+
+		// But non pointer FooID should not implement encoding.TextUnmarshaler.
+		if types.Implements(fooID, tuInterface) {
+			t.Error("type FooID should not implement encoding.TextUnmarshaler interface")
+		}
+
+		// The Pointer to FooID - *FooID, should implement encoding.TextUnmarshaler interface.
+		ptrFooID := types.PointerTo(fooID)
+		if !types.Implements(ptrFooID, tuInterface) {
+			t.Error("pointer to FooID should implement encoding.TextUnmarshaler interface")
+		}
+
+		// And also it should implement encoding.TextMarshaler interface.
+		if !types.Implements(ptrFooID, tmInterface) {
+			t.Errorf("pointer to FooID should implement  encoding.TextMarshaler interface")
+		}
+
+		alias := fooID.(*types.Alias)
+		for _, method := range alias.Methods {
+			switch method.FuncName {
+			case "UnmarshalText":
+				if method.Comment != "UnmarshalText implements encoding.TextUnmarshaler interface.\n" {
+					t.Errorf("fooID UnmarshalText comment doesn't match: %s", method.Comment)
+				}
+			case "MarshalText":
+				if method.Comment != "MarshalText implements encoding.TextMarshaler interface.\n" {
+					t.Errorf("fooID MarshalText comment doesn't match: %s", method.Comment)
+				}
+			}
+		}
+	}
+}
+
+func testArrayWrapper(pkg *types.Package) func(t *testing.T) {
+	return func(t *testing.T) {
+		aw, ok := pkg.GetType("ArrayWrapper")
+		if !ok {
+			t.Fatal("no ArrayWrapper type found")
+		}
+
+		alias, ok := aw.(*types.Alias)
+		if !ok {
+			t.Fatal("ArrayWrapper is expected to be a wrapper")
+		}
+
+		if !alias.Type.Equal(types.ArrayOf(types.Byte, 16)) {
+			t.Fatalf("ArrayWrapper type is not [16]byte: %v", alias.Type)
+		}
+	}
 }

@@ -2,6 +2,7 @@ package testcases
 
 import (
 	"context"
+	"io"
 	"strconv"
 	"time"
 )
@@ -85,3 +86,12 @@ type Bar struct {
 }
 
 type ArrayWrapper [16]byte
+
+type FuncWrapper func(w io.Writer) error
+
+type MultiPointerInlineStruct ******struct {
+	// Field test comment.
+	Field string
+}
+
+func (f FuncWrapper) Do() {}
