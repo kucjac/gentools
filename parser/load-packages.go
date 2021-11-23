@@ -395,12 +395,17 @@ func (r *rootPackage) parseComments(p *types.Package) {
 							func() {}()
 						}
 
+						var i int
 					ptrLoop:
 						for {
+							i++
+							if i > 20 {
+								func() {}()
+							}
 							switch tt := tp.(type) {
 							case *types.Pointer:
 								// Dereference the type.
-								tp = tt.PointedType
+								tp = tt.Elem()
 								continue ptrLoop
 							case *types.Struct:
 								tt.Comment = comment
@@ -409,11 +414,10 @@ func (r *rootPackage) parseComments(p *types.Package) {
 							structLoop:
 								for {
 									switch tempType := temp.(type) {
-									case *ast.Ident:
 									case *ast.StarExpr:
 										temp = tempType.X
 									case *ast.SelectorExpr:
-										temp = tempType.X
+										temp = tempType.Sel
 									case *ast.StructType:
 										structType = tempType
 										break structLoop
@@ -447,7 +451,7 @@ func (r *rootPackage) parseComments(p *types.Package) {
 									case *ast.StarExpr:
 										temp = tempType.X
 									case *ast.SelectorExpr:
-										temp = tempType.X
+										temp = tempType.Sel
 									case *ast.InterfaceType:
 										interfaceType = tempType
 										break interfaceLoop
@@ -476,7 +480,7 @@ func (r *rootPackage) parseComments(p *types.Package) {
 							case *types.Function:
 								tt.Comment = comment
 							}
-							break ptrLoop
+							continue specLoop
 						}
 					case *ast.ValueSpec:
 						if st.Doc == nil {
