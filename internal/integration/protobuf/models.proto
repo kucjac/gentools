@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package gentools.internal.integration.protobuf;
+
+option go_package = "github.com/kucjac/gentoos/internal/integration/protobuf";
+
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/timestamp.proto";
+
+
+message TestingMessage {
+  google.protobuf.Any any = 1;
+  google.protobuf.Duration duration = 2;
+  google.protobuf.Timestamp  timestamp = 3;
+  string file = 4;
+}
