@@ -47,7 +47,9 @@ func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 		}
 		tp, ok := r.refPkg.GetType(x.Name)
 		if !ok {
-			log.Printf("ident: '%s' not found in the package: '%s'", x.Name, r.refPkg.Path)
+			if r.loadConfig.Verbose {
+				log.Printf("ident: '%s' not found in the package: '%s'", x.Name, r.refPkg.Path)
+			}
 			return nil, errIdentNotFound
 		}
 		return tp, nil
@@ -213,15 +215,3 @@ func (r *rootPackage) extractInterfaceExpr(expr ast.Expr) (*ast.InterfaceType, b
 	}
 	return nil, false
 }
-
-// func (r *rootPackage) extractFuncType(expr ast.Expr) (*types.Function, bool) {
-// 	switch x := expr.(type) {
-// 	case *ast.StarExpr:
-// 		return r.extractFuncType(x.X)
-// 	case *ast.Ident:
-// 		tp, ok := r.refPkg.Types[x.Name]
-// 		if !ok {
-// 			return nil, false
-// 		}
-// 	}
-// }

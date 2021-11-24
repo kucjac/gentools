@@ -513,14 +513,21 @@ func (r *rootPackage) parseComments(p *types.Package) {
 						}
 						break
 					}
-				} else {
-					funType, _ = p.GetFunction(dt.Name.Name)
-				}
-				if funType == nil {
-					if r.loadConfig.Verbose {
-						log.Printf("method: '%s' not found in the pkg: %s declaration\n", dt.Name.Name, p.Path)
+					if funType == nil {
+						if r.loadConfig.Verbose {
+							log.Printf("method: '%s' not found in the pkg: %s declaration\n", dt.Name.Name, p.Path)
+						}
+						continue
 					}
-					continue
+				} else {
+					var ok bool
+					funType, ok = p.GetFunction(dt.Name.Name)
+					if !ok {
+						if r.loadConfig.Verbose {
+							log.Printf("function: '%s' not found in the pkg: %s declaration\n", dt.Name.Name, p.Path)
+						}
+						continue
+					}
 				}
 				funType.Comment = dt.Doc.Text()
 			}
