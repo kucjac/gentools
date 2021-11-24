@@ -5,7 +5,13 @@ import (
 	"io"
 	"strconv"
 	"time"
+
+	"github.com/kucjac/gentools/parser/testcases/imported"
 )
+
+func init() {
+
+}
 
 type Enumerated int
 
@@ -95,3 +101,10 @@ type MultiPointerInlineStruct ******struct {
 }
 
 func (f FuncWrapper) Do() {}
+
+type (
+	SizeCache       = imported.SizeCache
+	WeakFields      = imported.WeakFields
+	UnknownFields   = imported.UnknownFields
+	ExtensionFields = imported.ExtensionFields
+)

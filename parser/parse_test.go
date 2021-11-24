@@ -181,41 +181,21 @@ func TestParse(t *testing.T) {
 
 	t.Run("FuncWrapper", testFuncWrapper(pkg, pkgs))
 
-	t.Run("MultiPointerInlineStruct", func(t *testing.T) {
-		tp, ok := pkgs.TypeOf("MultiPointerInlineStruct", pkg)
+	t.Run("MultiPointerInlineStruct", testMultiPointerInlineStruct(pkgs, pkg))
+
+	t.Run("WeakFields", func(t *testing.T) {
+		wf, ok := pkg.GetType("WeakFields")
 		if !ok {
-			t.Fatal("no MultiPointerInlineStruct type found")
+			t.Fatal("type not found")
 		}
 
-		var pointerCount int
-	pointerLoop:
-		for {
-			switch tpp := tp.(type) {
-			case *types.Alias:
-				tp = tpp.Type
-			case *types.Pointer:
-				tp = tpp.PointedType
-				pointerCount++
-			default:
-				break pointerLoop
-			}
-		}
-		if pointerCount != 6 {
-			t.Fatalf("there should be exactly 6 pointers to the struct but are: %d", pointerCount)
-		}
-		st, ok := tp.(*types.Struct)
+		alias, ok := wf.(*types.Alias)
 		if !ok {
-			t.Fatalf("expected type to be a Struct but is: %T", tp)
+			t.Fatalf("type not an Alias, %T", wf)
 		}
-		if len(st.Fields) != 1 {
-			t.Fatal("struct expected to have exactly one field")
-		}
-		field := st.Fields[0]
-		if field.Name != "Field" {
-			t.Errorf("field name is expected to be 'Field' but is: %s", field.Name)
-		}
-		if field.Comment != "Field test comment.\n" {
-			t.Errorf("Field comment doesn't match: %s", field.Comment)
+
+		if alias.AliasName != "WeakFields" {
+			t.Fatalf("name not match: %s", alias.AliasName)
 		}
 	})
 
@@ -252,6 +232,46 @@ func TestParse(t *testing.T) {
 	t.Run("Foo", testFoo(fooStruct, enum, barStruct))
 
 	t.Run("Bar", testBar(barStruct, pkgs, notEmpty))
+}
+
+func testMultiPointerInlineStruct(pkgs types.PackageMap, pkg *types.Package) func(t *testing.T) {
+	return func(t *testing.T) {
+		tp, ok := pkgs.TypeOf("MultiPointerInlineStruct", pkg)
+		if !ok {
+			t.Fatal("no MultiPointerInlineStruct type found")
+		}
+
+		var pointerCount int
+	pointerLoop:
+		for {
+			switch tpp := tp.(type) {
+			case *types.Alias:
+				tp = tpp.Type
+			case *types.Pointer:
+				tp = tpp.PointedType
+				pointerCount++
+			default:
+				break pointerLoop
+			}
+		}
+		if pointerCount != 6 {
+			t.Fatalf("there should be exactly 6 pointers to the struct but are: %d", pointerCount)
+		}
+		st, ok := tp.(*types.Struct)
+		if !ok {
+			t.Fatalf("expected type to be a Struct but is: %T", tp)
+		}
+		if len(st.Fields) != 1 {
+			t.Fatal("struct expected to have exactly one field")
+		}
+		field := st.Fields[0]
+		if field.Name != "Field" {
+			t.Errorf("field name is expected to be 'Field' but is: %s", field.Name)
+		}
+		if field.Comment != "Field test comment.\n" {
+			t.Errorf("Field comment doesn't match: %s", field.Comment)
+		}
+	}
 }
 
 func testFuncWrapper(pkg *types.Package, pkgs types.PackageMap) func(t *testing.T) {

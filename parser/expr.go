@@ -1,12 +1,16 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
+	"log"
 	"strconv"
 
 	"github.com/kucjac/gentools/types"
 )
+
+var errIdentNotFound = errors.New("ident not found")
 
 func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 	switch x := expr.(type) {
@@ -43,7 +47,8 @@ func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 		}
 		tp, ok := r.refPkg.GetType(x.Name)
 		if !ok {
-			return nil, fmt.Errorf("ident: '%s' not found in the package: '%s'", x.Name, r.refPkg.Path)
+			log.Printf("ident: '%s' not found in the package: '%s'", x.Name, r.refPkg.Path)
+			return nil, errIdentNotFound
 		}
 		return tp, nil
 	case *ast.MapType:
@@ -108,3 +113,115 @@ func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 		return nil, nil
 	}
 }
+
+func (r *rootPackage) extractStructExpr(expr ast.Expr) (*ast.StructType, bool) {
+	switch x := expr.(type) {
+	case *ast.Ident:
+		for _, f := range r.pkgPkg.Syntax {
+			for _, decl := range f.Decls {
+				gen, ok := decl.(*ast.GenDecl)
+				if !ok {
+					continue
+				}
+				for _, spec := range gen.Specs {
+					ts, ok := spec.(*ast.TypeSpec)
+					if !ok {
+						continue
+					}
+
+					if ts.Name.Name != x.Name {
+						continue
+					}
+					return r.extractStructExpr(ts.Type)
+				}
+			}
+		}
+		return nil, false
+	case *ast.SelectorExpr:
+		i, ok := x.X.(*ast.Ident)
+		if !ok {
+			panic("selector expression is not an ident")
+		}
+		for _, im := range r.typesPkg.Imports() {
+			if im.Name() != i.Name {
+				continue
+			}
+
+			root, ok := r.rootPackages[im]
+			if !ok {
+				if r.loadConfig.Verbose {
+					log.Printf("root package: %s not found", im.Path())
+				}
+				return nil, false
+			}
+			return root.extractStructExpr(x.Sel)
+		}
+	case *ast.StarExpr:
+		return r.extractStructExpr(x.X)
+	case *ast.StructType:
+		return x, true
+	}
+	return nil, false
+}
+
+func (r *rootPackage) extractInterfaceExpr(expr ast.Expr) (*ast.InterfaceType, bool) {
+	switch x := expr.(type) {
+	case *ast.Ident:
+		for _, f := range r.pkgPkg.Syntax {
+			for _, decl := range f.Decls {
+				gen, ok := decl.(*ast.GenDecl)
+				if !ok {
+					continue
+				}
+				for _, spec := range gen.Specs {
+					ts, ok := spec.(*ast.TypeSpec)
+					if !ok {
+						continue
+					}
+
+					if ts.Name.Name != x.Name {
+						continue
+					}
+					return r.extractInterfaceExpr(ts.Type)
+				}
+			}
+		}
+		return nil, false
+	case *ast.SelectorExpr:
+		i, ok := x.X.(*ast.Ident)
+		if !ok {
+			panic("selector expression is not an ident")
+		}
+		for _, im := range r.typesPkg.Imports() {
+			if im.Name() != i.Name {
+				continue
+			}
+
+			root, ok := r.rootPackages[im]
+			if !ok {
+				if r.loadConfig.Verbose {
+					log.Printf("root package: %s not found", im.Path())
+				}
+				return nil, false
+			}
+			return root.extractInterfaceExpr(x.Sel)
+		}
+	case *ast.StarExpr:
+		return r.extractInterfaceExpr(x.X)
+	case *ast.InterfaceType:
+		return x, true
+	}
+	return nil, false
+}
+
+// func (r *rootPackage) extractFuncType(expr ast.Expr) (*types.Function, bool) {
+// 	switch x := expr.(type) {
+// 	case *ast.StarExpr:
+// 		return r.extractFuncType(x.X)
+// 	case *ast.Ident:
+// 		tp, ok := r.refPkg.Types[x.Name]
+// 		if !ok {
+// 			return nil, false
+// 		}
+// 	}
+// }
