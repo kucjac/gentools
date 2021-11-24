@@ -6,16 +6,18 @@ import (
 	"go/ast"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/kucjac/gentools/types"
+	"golang.org/x/tools/go/packages"
 )
 
 var errIdentNotFound = errors.New("ident not found")
 
-func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
+func (r *rootPackage) extractAliasExpr(f *ast.File, expr ast.Expr) (types.Type, error) {
 	switch x := expr.(type) {
 	case *ast.StarExpr:
-		of, err := r.extractAliasExpr(x.X)
+		of, err := r.extractAliasExpr(f, x.X)
 		if err != nil {
 			return nil, err
 		}
@@ -25,18 +27,43 @@ func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 		if !ok {
 			panic("selector expression is not an ident")
 		}
-		for _, im := range r.typesPkg.Imports() {
-			if im.Name() != i.Name {
+		for _, im := range f.Imports {
+			pkgPath := strings.Trim(im.Path.Value, "\"")
+			ident := pkgPath
+			if im.Name == nil {
+				if li := strings.LastIndex(ident, "/"); li != -1 {
+					ident = ident[li+1:]
+				}
+			} else {
+				ident = im.Name.Name
+			}
+			if ident != i.Name {
 				continue
 			}
 
-			root, ok := r.rootPackages[im]
-			if !ok {
-				return nil, fmt.Errorf("root package: %s not found", im.Path())
+			if pkgPath == "unsafe" && x.Sel.Name == "Pointer" {
+				return types.UnsafePointer, nil
 			}
 
-			return root.extractAliasExpr(x.Sel)
+			pkg, ok := r.pkgPkg.Imports[pkgPath]
+			if !ok {
+				return nil, fmt.Errorf("imported package not found %s", im.Path.Value)
+			}
+
+			root, ok := r.rootPackages[pkg.Types]
+			if !ok {
+				return nil, fmt.Errorf("root package: %s not found", pkg.PkgPath)
+			}
+			// Find matching file for the selector definition.
+			file, ok := r.findFileMatchingIdent(pkg, x.Sel)
+			if !ok {
+				return nil, fmt.Errorf("file matching given ident not found: %s", x.Sel.Name)
+			}
+
+			return root.extractAliasExpr(file, x.Sel)
 		}
+
+		// Need to search for the file specific import alias.
 		return nil, fmt.Errorf("no matching imported package to given selector: '%s'", x.Sel.Name)
 	case *ast.Ident:
 		if tp, ok := types.GetBuiltInType(x.Name); ok {
@@ -54,17 +81,17 @@ func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 		}
 		return tp, nil
 	case *ast.MapType:
-		k, err := r.extractAliasExpr(x.Key)
+		k, err := r.extractAliasExpr(f, x.Key)
 		if err != nil {
 			return nil, err
 		}
-		v, err := r.extractAliasExpr(x.Value)
+		v, err := r.extractAliasExpr(f, x.Value)
 		if err != nil {
 			return nil, err
 		}
 		return types.MapOf(k, v), nil
 	case *ast.ChanType:
-		tp, err := r.extractAliasExpr(x.Value)
+		tp, err := r.extractAliasExpr(f, x.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +104,7 @@ func (r *rootPackage) extractAliasExpr(expr ast.Expr) (types.Type, error) {
 		}
 		return types.ChanOf(dir, tp), nil
 	case *ast.ArrayType:
-		tp, err := r.extractAliasExpr(x.Elt)
+		tp, err := r.extractAliasExpr(f, x.Elt)
 		if err != nil {
 			return nil, err
 		}
@@ -212,6 +239,32 @@ func (r *rootPackage) extractInterfaceExpr(expr ast.Expr) (*ast.InterfaceType, b
 		return r.extractInterfaceExpr(x.X)
 	case *ast.InterfaceType:
 		return x, true
+	}
+	return nil, false
+}
+
+func (r *rootPackage) findFileMatchingIdent(pkg *packages.Package, ident *ast.Ident) (*ast.File, bool) {
+	for _, file := range pkg.Syntax {
+		for _, decl := range file.Decls {
+			gd, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range gd.Specs {
+				switch t := spec.(type) {
+				case *ast.TypeSpec:
+					if t.Name.Name == ident.Name {
+						return file, true
+					}
+				case *ast.ValueSpec:
+					for _, name := range t.Names {
+						if name.Name == ident.Name {
+							return file, true
+						}
+					}
+				}
+			}
+		}
 	}
 	return nil, false
 }

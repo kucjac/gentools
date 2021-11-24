@@ -275,8 +275,11 @@ func (r *rootPackage) resolveIdentAliases() {
 				if _, isAlias := r.mappedAliases[ts.Name.Name]; !isAlias {
 					continue
 				}
+				if ts.Name.Name == "PlaceholderEnum" {
+					func() {}()
+				}
 
-				at, err := r.extractAliasExpr(ts.Type)
+				at, err := r.extractAliasExpr(file, ts.Type)
 				if err != nil {
 					if errors.Is(err, errIdentNotFound) {
 						// Add the specification on the back of the queue.
