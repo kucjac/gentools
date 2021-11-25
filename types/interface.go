@@ -57,7 +57,7 @@ func (i *Interface) IsEmpty() bool {
 
 // Implements checks if given interface implements another interface.
 func (i *Interface) Implements(another *Interface) bool {
-	return Implements(i, another)
+	return implements(i, another, false)
 }
 
 // Equal implements Type interface.
@@ -67,6 +67,10 @@ func (i *Interface) Equal(another Type) bool {
 		return false
 	}
 	return it.Pkg == i.Pkg && it.InterfaceName == i.InterfaceName
+}
+
+func (i *Interface) getMethods() []Function {
+	return i.Methods
 }
 
 // Implements checks if the type t implements interface 'interfaceType'.
