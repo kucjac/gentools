@@ -57,7 +57,7 @@ func (i *Interface) IsEmpty() bool {
 
 // Implements checks if given interface implements another interface.
 func (i *Interface) Implements(another *Interface) bool {
-	return implements(i, another, false)
+	return implements(another, i, false)
 }
 
 // Equal implements Type interface.
