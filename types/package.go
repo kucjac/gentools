@@ -104,7 +104,12 @@ func (p *Package) MustGetType(name string) Type {
 	return t
 }
 
-// GetType gets concurrently package type.
+// TypeOf gets the package type by its name in a concurrent safe way.
+func (p *Package) TypeOf(name string) (Type, bool) {
+	return p.GetType(name)
+}
+
+// GetType gets concurrently safe package type.
 func (p *Package) GetType(name string) (Type, bool) {
 	p.Lock()
 	defer p.Unlock()

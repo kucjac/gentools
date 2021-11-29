@@ -88,3 +88,16 @@ const (
 	SendOnly
 	RecvOnly
 )
+
+func (c ChanDir) String() string {
+	if c < 0 || c > 2 {
+		return "UndefinedChanDir"
+	}
+	return chanDirNames[c]
+}
+
+var chanDirNames = [3]string{
+	"SendRecv",
+	"SendOnly",
+	"RecvOnly",
+}

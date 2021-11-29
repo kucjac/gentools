@@ -155,6 +155,14 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 		return &Map{Key: kt, Value: vt}, true
 	}
 
+	var pkgPath string
+	indexDot := strings.LastIndex(typeOf, ".")
+	if indexDot != -1 {
+		pkgPath = typeOf[:indexDot]
+		typeOf = typeOf[indexDot+1:]
+	}
+
+	var isRoundBracket bool
 	indexNext, indexDot, indexBracket := -1, -1, -1
 	runes := []rune(typeOf)
 	for i := 0; i < len(typeOf); i++ {
@@ -168,6 +176,7 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 			if indexBracket != -1 {
 				return nil, false
 			}
+			isRoundBracket = runes[i] == '('
 			indexBracket = i
 		case '*', '[', '<':
 			indexNext = i
@@ -182,18 +191,20 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 	}
 
 	thisPkg := ctxPkg
-	if indexDot != -1 && (indexNext > indexDot || indexNext == -1) {
+	if pkgPath != "" {
 		var ok bool
-		if len(typeOf)-1 == indexDot {
+		if len(typeOf) == 0 {
 			return nil, false
 		}
-		thisPkg, ok = p.PackageByIdentifier(typeOf[:indexDot])
-		if !ok {
-			return nil, false
-		}
-		typeOf = typeOf[indexDot+1:]
-		if indexBracket != -1 {
-			indexBracket -= indexDot
+		if thisPkg == nil || (thisPkg != nil && pkgPath != thisPkg.Path && pkgPath != thisPkg.Identifier) {
+			if strings.ContainsRune(pkgPath, '/') {
+				thisPkg, ok = p.PackageByPath(pkgPath)
+			} else {
+				thisPkg, ok = p.PackageByIdentifier(pkgPath)
+			}
+			if !ok {
+				return nil, false
+			}
 		}
 	}
 	var next string
@@ -204,23 +215,39 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 		next = typeOf[indexBracket+1:]
 		typeOf = typeOf[:indexBracket]
 	}
-	bt, ok := GetBuiltInType(typeOf)
-	if ok {
-		return bt, true
-	}
-	if thisPkg == nil {
+	if thisPkg == nil || thisPkg == builtIn {
+		bt, ok := GetBuiltInType(typeOf)
+		if ok {
+			return bt, true
+		}
 		return nil, false
 	}
 	tp, ok := thisPkg.GetType(typeOf)
 	if !ok {
 		return nil, false
 	}
-	if next == "" || next == "()" || next == "{}" {
+	if next == "" || next == ")" || next == "}" {
 		return tp, true
 	}
 
-	if _, isAlias := tp.(*Alias); next != "" && next[0] == '0' && !isAlias {
-		return nil, false
+	if next != "" {
+		alias, isAlias := tp.(*Alias)
+		if !isAlias {
+			return nil, false
+		}
+		lastRune := runes[len(runes)-1]
+		if isRoundBracket && lastRune != ')' {
+			return nil, false
+		}
+
+		if !isRoundBracket && lastRune != '}' {
+			return nil, false
+		}
+		zero := alias.Type.Zero(false, ctxPkg.Path)
+		next = next[:len(next)-1]
+		if next != zero {
+			return nil, false
+		}
 	}
 	return tp, true
 }
