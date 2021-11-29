@@ -35,7 +35,7 @@ func TestZero(t *testing.T) {
 		t.Error("TypeOf find 'types.Struct' failed")
 	}
 
-	for _, expected := range []struct {
+	testCases := []struct {
 		PkgContext *types.Package
 		Name       string
 		Type       types.Type
@@ -113,15 +113,18 @@ func TestZero(t *testing.T) {
 			Name: "[]byte",
 			Type: &types.Array{ArrayKind: types.KindSlice, Type: types.MustGetBuiltInType("byte")},
 		},
-	} {
-		tp, ok := pkgs.TypeOf(expected.Name, expected.PkgContext)
-		if !ok {
-			t.Errorf("Package: TypeOf('%s') failed", expected.Name)
-			continue
-		}
-		if !tp.Equal(expected.Type) {
-			t.Errorf("TypeOf resulting type: '%s' is not equal to expected: '%s'", tp, expected.Type)
-		}
+	}
+
+	for _, expected := range testCases {
+		t.Run(expected.Name, func(t *testing.T) {
+			tp, ok := pkgs.TypeOf(expected.Name, expected.PkgContext)
+			if !ok {
+				t.Errorf("Package: TypeOf('%s') failed", expected.Name)
+			}
+			if !tp.Equal(expected.Type) {
+				t.Errorf("TypeOf resulting type: '%s' is not equal to expected: '%s'", tp, expected.Type)
+			}
+		})
 	}
 }
 

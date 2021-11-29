@@ -215,12 +215,10 @@ func (p *PackageMap) decomposeStringType(typeOf string, ctxPkg *Package) (Type, 
 		next = typeOf[indexBracket+1:]
 		typeOf = typeOf[:indexBracket]
 	}
-	if thisPkg == nil || thisPkg == builtIn {
-		bt, ok := GetBuiltInType(typeOf)
-		if ok {
-			return bt, true
-		}
-		return nil, false
+
+	bt, ok := GetBuiltInType(typeOf)
+	if ok {
+		return bt, true
 	}
 	tp, ok := thisPkg.GetType(typeOf)
 	if !ok {
