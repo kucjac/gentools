@@ -380,6 +380,9 @@ func (r *rootPackage) defineDeclarations(s *gotypes.Scope, p *types.Package) {
 
 func (r *rootPackage) parseComments(p *types.Package) {
 	for _, file := range r.pkgPkg.Syntax {
+		if file == nil {
+			fmt.Println("Nil File?!")
+		}
 	declLoop:
 		for _, decl := range file.Decls {
 			switch dt := decl.(type) {
@@ -412,7 +415,7 @@ func (r *rootPackage) parseComments(p *types.Package) {
 								continue ptrLoop
 							case *types.Struct:
 								tt.Comment = comment
-								structType, ok := r.extractStructExpr(st.Type)
+								structType, ok := r.extractStructExpr(file, st.Type)
 								if !ok {
 									if r.loadConfig.Verbose {
 										log.Printf("getting ast struct type failed. package: '%s', name: '%s'\n", r.refPkg.Path, st.Name.Name)
@@ -425,13 +428,15 @@ func (r *rootPackage) parseComments(p *types.Package) {
 									if field.Doc != nil {
 										fc = field.Doc.Text()
 									}
-
+									if len(tt.Fields) != structType.Fields.NumFields() {
+										fmt.Println("Different!")
+									}
 									tt.Fields[j].Comment = fc
 								}
 							case *types.Interface:
 								tt.Comment = comment
 
-								interfaceType, ok := r.extractInterfaceExpr(st.Type)
+								interfaceType, ok := r.extractInterfaceExpr(file, st.Type)
 								if !ok {
 									if r.loadConfig.Verbose {
 										log.Printf("Getting ast interface type failed.  Package: '%s', name: '%s'", r.pkgPkg.Name, st.Name.Name)

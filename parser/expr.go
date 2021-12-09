@@ -143,7 +143,7 @@ func (r *rootPackage) extractAliasExpr(f *ast.File, expr ast.Expr) (types.Type, 
 	}
 }
 
-func (r *rootPackage) extractStructExpr(expr ast.Expr) (*ast.StructType, bool) {
+func (r *rootPackage) extractStructExpr(file *ast.File, expr ast.Expr) (*ast.StructType, bool) {
 	switch x := expr.(type) {
 	case *ast.Ident:
 		for _, f := range r.pkgPkg.Syntax {
@@ -161,7 +161,7 @@ func (r *rootPackage) extractStructExpr(expr ast.Expr) (*ast.StructType, bool) {
 					if ts.Name.Name != x.Name {
 						continue
 					}
-					return r.extractStructExpr(ts.Type)
+					return r.extractStructExpr(f, ts.Type)
 				}
 			}
 		}
@@ -171,29 +171,47 @@ func (r *rootPackage) extractStructExpr(expr ast.Expr) (*ast.StructType, bool) {
 		if !ok {
 			panic("selector expression is not an ident")
 		}
-		for _, im := range r.typesPkg.Imports() {
-			if im.Name() != i.Name {
+
+		for _, im := range file.Imports {
+			pkgPath := strings.Trim(im.Path.Value, "\"")
+			ident := pkgPath
+			if im.Name == nil {
+				if li := strings.LastIndex(ident, "/"); li != -1 {
+					ident = ident[li+1:]
+				}
+			} else {
+				ident = im.Name.Name
+			}
+			if ident != i.Name {
 				continue
 			}
 
-			root, ok := r.rootPackages[im]
+			pkg, ok := r.pkgPkg.Imports[pkgPath]
 			if !ok {
-				if r.loadConfig.Verbose {
-					log.Printf("root package: %s not found", im.Path())
-				}
 				return nil, false
 			}
-			return root.extractStructExpr(x.Sel)
+
+			root, ok := r.rootPackages[pkg.Types]
+			if !ok {
+				return nil, false
+			}
+			// Find matching file for the selector definition.
+			f, ok := r.findFileMatchingIdent(pkg, x.Sel)
+			if !ok {
+				return nil, false
+			}
+
+			return root.extractStructExpr(f, x.Sel)
 		}
 	case *ast.StarExpr:
-		return r.extractStructExpr(x.X)
+		return r.extractStructExpr(file, x.X)
 	case *ast.StructType:
 		return x, true
 	}
 	return nil, false
 }
 
-func (r *rootPackage) extractInterfaceExpr(expr ast.Expr) (*ast.InterfaceType, bool) {
+func (r *rootPackage) extractInterfaceExpr(file *ast.File, expr ast.Expr) (*ast.InterfaceType, bool) {
 	switch x := expr.(type) {
 	case *ast.Ident:
 		for _, f := range r.pkgPkg.Syntax {
@@ -211,7 +229,7 @@ func (r *rootPackage) extractInterfaceExpr(expr ast.Expr) (*ast.InterfaceType, b
 					if ts.Name.Name != x.Name {
 						continue
 					}
-					return r.extractInterfaceExpr(ts.Type)
+					return r.extractInterfaceExpr(f, ts.Type)
 				}
 			}
 		}
@@ -221,22 +239,39 @@ func (r *rootPackage) extractInterfaceExpr(expr ast.Expr) (*ast.InterfaceType, b
 		if !ok {
 			panic("selector expression is not an ident")
 		}
-		for _, im := range r.typesPkg.Imports() {
-			if im.Name() != i.Name {
+		for _, im := range file.Imports {
+			pkgPath := strings.Trim(im.Path.Value, "\"")
+			ident := pkgPath
+			if im.Name == nil {
+				if li := strings.LastIndex(ident, "/"); li != -1 {
+					ident = ident[li+1:]
+				}
+			} else {
+				ident = im.Name.Name
+			}
+			if ident != i.Name {
 				continue
 			}
 
-			root, ok := r.rootPackages[im]
+			pkg, ok := r.pkgPkg.Imports[pkgPath]
 			if !ok {
-				if r.loadConfig.Verbose {
-					log.Printf("root package: %s not found", im.Path())
-				}
 				return nil, false
 			}
-			return root.extractInterfaceExpr(x.Sel)
+
+			root, ok := r.rootPackages[pkg.Types]
+			if !ok {
+				return nil, false
+			}
+			// Find matching file for the selector definition.
+			f, ok := r.findFileMatchingIdent(pkg, x.Sel)
+			if !ok {
+				return nil, false
+			}
+
+			return root.extractInterfaceExpr(f, x.Sel)
 		}
 	case *ast.StarExpr:
-		return r.extractInterfaceExpr(x.X)
+		return r.extractInterfaceExpr(file, x.X)
 	case *ast.InterfaceType:
 		return x, true
 	}
