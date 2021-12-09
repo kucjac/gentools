@@ -380,9 +380,6 @@ func (r *rootPackage) defineDeclarations(s *gotypes.Scope, p *types.Package) {
 
 func (r *rootPackage) parseComments(p *types.Package) {
 	for _, file := range r.pkgPkg.Syntax {
-		if file == nil {
-			fmt.Println("Nil File?!")
-		}
 	declLoop:
 		for _, decl := range file.Decls {
 			switch dt := decl.(type) {
