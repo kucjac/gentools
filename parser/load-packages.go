@@ -30,6 +30,8 @@ type LoadConfig struct {
 	BuildFlags []string
 	// Verbose sets the loader in verbose mode.
 	Verbose bool
+	// WithComments
+	WithComments bool
 }
 
 // LoadPackages parses Golang packages using AST.
@@ -105,8 +107,12 @@ func PackageNameOfDir(srcDir string) (string, error) {
 
 func (p *packageMap) loadPackages(cfg *LoadConfig, pkgNames ...string) ([]*packages.Package, error) {
 	now := time.Now()
+	mode := packages.NeedName | packages.NeedDeps | packages.NeedImports | packages.NeedTypes
+	if cfg.WithComments {
+		mode |= packages.NeedSyntax
+	}
 	pkgCfg := &packages.Config{
-		Mode:       packages.NeedName | packages.NeedDeps | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax,
+		Mode:       mode,
 		BuildFlags: cfg.BuildFlags,
 	}
 
@@ -253,7 +259,9 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 	r.resolveInProgressTypes(s, p)
 	r.resolveIdentAliases()
 	r.defineDeclarations(s, p)
-	r.parseComments(p)
+	if r.loadConfig.WithComments {
+		r.parseComments(p)
+	}
 	fg.Done()
 }
 
