@@ -130,10 +130,12 @@ func TestZero(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	const testCasesPkgPath = "github.com/kucjac/gentools/parser/testcases"
-	pkgs, err := LoadPackages(LoadConfig{PkgNames: []string{
-		testCasesPkgPath,
-		"encoding",
-	}, Verbose: true})
+	cfg := LoadConfig{
+		PkgNames:     []string{testCasesPkgPath, "encoding"},
+		WithComments: true,
+		Verbose:      true,
+	}
+	pkgs, err := LoadPackages(cfg)
 	if err != nil {
 		t.Errorf("Parsing packages failed: %v", err)
 		return
