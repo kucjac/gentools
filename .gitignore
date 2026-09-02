@@ -1,1 +1,16 @@
 .idea
+
+# ====================================================================
+# GitHub Spec Kit Ignores
+# ====================================================================
+# Ignore active workspace state and session tracking
+.specify/feature.json
+
+# Ignore local system caching and platform-specific configurations
+.specify/**/*local-config.yml
+.specify/extensions/**/cache/
+
+# Optional: Ignore heavy vendor tooling stack if you prefer
+# team members to install/update the extensions locally via specify CLI
+.specify/extensions/*/
+.specify/scripts/bash/

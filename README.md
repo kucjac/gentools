@@ -22,6 +22,16 @@ The `types.PackageMap` contains context of mapped packages with their structs an
 The map could get loaded by using `LoadPackages` function or `types.PackageMap` method with the same name.
 Both of these loads provided input packages, whereas the method gets only required that doesn't already exist in itself.
 
+### Development
+
+The project toolkit is pinned to Go `1.19.13` through [`.go-version`](./.go-version).
+Make targets use `go` from `PATH` and fail unless it reports the pinned version.
+Configure Go through your IDE or a version manager such as mise or asdf:
+
+```sh
+make test
+```
+
 Example:
 
 ```go
