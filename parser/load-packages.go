@@ -49,7 +49,9 @@ func LoadPackages(cfg LoadConfig) (types.PackageMap, error) {
 	if len(pkgs) == 0 {
 		return nil, errors.New("no packages found")
 	}
-	p.parsePackages(&cfg, pkgs...)
+	if err := p.parsePackages(&cfg, pkgs...); err != nil {
+		return nil, err
+	}
 	return p.pkgMap, nil
 }
 
@@ -60,7 +62,14 @@ func UpdatePackages(p types.PackageMap, cfg LoadConfig) error {
 	if err != nil {
 		return err
 	}
-	pm := &packageMap{pkgMap: p}
+
+	// Parse into a copy so callers never observe a partially initialized map
+	// when loading or conversion fails.
+	staged := make(types.PackageMap, len(p))
+	for path, pkg := range p {
+		staged[path] = pkg
+	}
+	pm := &packageMap{pkgMap: staged}
 	pkgNames = pm.resolveLoadedPackages(pkgNames)
 	switch len(pkgNames) {
 	case 0:
@@ -75,7 +84,14 @@ func UpdatePackages(p types.PackageMap, cfg LoadConfig) error {
 		if len(pkgs) == 0 {
 			return errors.New("no packages found")
 		}
-		pm.parsePackages(&cfg, pkgs...)
+		if err := pm.parsePackages(&cfg, pkgs...); err != nil {
+			return err
+		}
+		for path, pkg := range staged {
+			if _, exists := p[path]; !exists {
+				p[path] = pkg
+			}
+		}
 	}
 	return nil
 }
@@ -107,10 +123,7 @@ func PackageNameOfDir(srcDir string) (string, error) {
 
 func (p *packageMap) loadPackages(cfg *LoadConfig, pkgNames ...string) ([]*packages.Package, error) {
 	now := time.Now()
-	mode := packages.NeedName | packages.NeedDeps | packages.NeedImports | packages.NeedTypes
-	if cfg.WithComments {
-		mode |= packages.NeedSyntax
-	}
+	mode := packages.NeedName | packages.NeedDeps | packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo
 	pkgCfg := &packages.Config{
 		Mode:       mode,
 		BuildFlags: cfg.BuildFlags,
@@ -120,8 +133,14 @@ func (p *packageMap) loadPackages(cfg *LoadConfig, pkgNames ...string) ([]*packa
 	if err != nil {
 		return nil, err
 	}
-	if packages.PrintErrors(pkgs) > 1 {
-		return nil, errors.New("error while loading import packages")
+	if packages.PrintErrors(pkgs) > 0 {
+		var diagnostics []string
+		for _, pkg := range pkgs {
+			for _, diagnostic := range pkg.Errors {
+				diagnostics = append(diagnostics, diagnostic.Error())
+			}
+		}
+		return nil, fmt.Errorf("package load failed: %s", strings.Join(diagnostics, "; "))
 	}
 	if cfg.Verbose {
 		log.Printf("AST packages loaded in: %s\n", time.Since(now))
@@ -157,7 +176,7 @@ func (p *packageMap) resolveLoadedPackages(pkgNames []string) (result []string) 
 	return result
 }
 
-func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package) {
+func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package) error {
 	now := time.Now()
 
 	var pkgs []*packages.Package
@@ -168,7 +187,7 @@ func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package
 		}
 	}
 	if len(pkgs) == 0 {
-		return
+		return nil
 	}
 
 	initWg, finishGroup := &sync.WaitGroup{}, &sync.WaitGroup{}
@@ -188,28 +207,39 @@ func (p *packageMap) parsePackages(cfg *LoadConfig, newPkgs ...*packages.Package
 
 	rootPkgs := map[*gotypes.Package]*rootPackage{}
 	for _, importedPkg := range pkgList {
+		existing, _ := p.read(importedPkg.typesPkg.Path())
 		rootPkg := &rootPackage{
 			rootPackages:    rootPkgs,
 			pkgPkg:          importedPkg.pkgPkg,
 			typesPkg:        importedPkg.typesPkg,
+			refPkg:          existing,
 			pkgMap:          p,
 			loadConfig:      cfg,
 			typesInProgress: map[string]types.Type{},
+			typeParameters:  map[gotypes.Type]*types.TypeParameter{},
 			mappedAliases:   map[string]struct{}{},
 			namedAliases:    map[string]*gotypes.Named{},
 		}
 		rootPkgs[importedPkg.typesPkg] = rootPkg
 	}
 
+	errs := make(chan error, len(rootPkgs))
 	for _, rootPkg := range rootPkgs {
-		go rootPkg.parseTypePkg(initWg, finishGroup)
+		go rootPkg.parseTypePkg(initWg, finishGroup, errs)
 	}
 
 	finishGroup.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			return err
+		}
+	}
 
 	if cfg.Verbose {
 		log.Printf("gentools packages parsed in %s\n", time.Since(now))
 	}
+	return nil
 }
 
 type importedPackage struct {
@@ -240,6 +270,7 @@ type rootPackage struct {
 	loadConfig      *LoadConfig
 	declNames       []string
 	typesInProgress map[string]types.Type
+	typeParameters  map[gotypes.Type]*types.TypeParameter
 }
 
 func (r *rootPackage) setTypeInProgress(name string, tp types.Type) {
@@ -247,7 +278,14 @@ func (r *rootPackage) setTypeInProgress(name string, tp types.Type) {
 	r.refPkg.SetNamedType(name, tp)
 }
 
-func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
+func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup, errs chan<- error) {
+	defer fg.Done()
+	if r.refPkg != nil {
+		initWg.Done()
+		initWg.Wait()
+		return
+	}
+
 	p := r.pkgMap.newPackage(r.typesPkg.Path(), r.typesPkg.Name())
 
 	r.refPkg = p
@@ -257,24 +295,29 @@ func (r *rootPackage) parseTypePkg(initWg, fg *sync.WaitGroup) {
 
 	s := r.typesPkg.Scope()
 	r.resolveInProgressTypes(s, p)
-	r.resolveIdentAliases()
+	if err := r.resolveIdentAliases(); err != nil {
+		errs <- fmt.Errorf("resolve aliases in package %s: %w", r.typesPkg.Path(), err)
+		return
+	}
 	r.defineDeclarations(s, p)
 	if r.loadConfig.WithComments {
 		r.parseComments(p)
 	}
-	fg.Done()
 }
 
-func (r *rootPackage) resolveIdentAliases() {
+// resolveIdentAliases resolves compatibility aliases exactly once.  The former
+// retry queue appended an unresolved TypeSpec while using the growing slice as
+// its loop bound, so a permanently unresolved type grew memory without limit.
+// Type information is already available from go/packages and provides the
+// semantic RHS directly, including generic instantiations.
+func (r *rootPackage) resolveIdentAliases() error {
 	for _, file := range r.pkgPkg.Syntax {
 		for _, decl := range file.Decls {
 			dt, ok := decl.(*ast.GenDecl)
 			if !ok {
 				continue
 			}
-			specs := dt.Specs
-			for i := 0; i < len(specs); i++ {
-				spec := specs[i]
+			for _, spec := range dt.Specs {
 				ts, ok := spec.(*ast.TypeSpec)
 				if !ok {
 					continue
@@ -283,20 +326,6 @@ func (r *rootPackage) resolveIdentAliases() {
 				if _, isAlias := r.mappedAliases[ts.Name.Name]; !isAlias {
 					continue
 				}
-				if ts.Name.Name == "PlaceholderEnum" {
-					func() {}()
-				}
-
-				at, err := r.extractAliasExpr(file, ts.Type)
-				if err != nil {
-					if errors.Is(err, errIdentNotFound) {
-						// Add the specification on the back of the queue.
-						specs = append(specs, spec)
-						continue
-					}
-					panic(err)
-				}
-
 				named, ok := r.namedAliases[ts.Name.Name]
 				if !ok {
 					continue
@@ -308,13 +337,24 @@ func (r *rootPackage) resolveIdentAliases() {
 				}
 				alias, ok := ip.(*types.Alias)
 				if !ok {
-					panic("expected to be an alias")
+					return fmt.Errorf("%s: expected compatibility alias, got %T", ts.Name.Name, ip)
 				}
 
-				r.finishNamedAliasType(named, alias, at)
+				rhs := r.pkgPkg.TypesInfo.TypeOf(ts.Type)
+				if rhs == nil {
+					return fmt.Errorf("%s: missing type information for alias target", ts.Name.Name)
+				}
+				underlying, ok := r.dereferenceType(r.refPkg, rhs)
+				if !ok {
+					return fmt.Errorf("%s: cannot resolve alias target %s", ts.Name.Name, rhs.String())
+				}
+				if !r.finishNamedAliasType(named, alias, underlying) {
+					return fmt.Errorf("%s: cannot finish compatibility alias", ts.Name.Name)
+				}
 			}
 		}
 	}
+	return nil
 }
 
 func (r *rootPackage) resolveInProgressTypes(s *gotypes.Scope, p *types.Package) {
@@ -337,11 +377,10 @@ func (r *rootPackage) resolveInProgressTypes(s *gotypes.Scope, p *types.Package)
 		tp := typesScope.Lookup(name)
 		switch t := tp.Type().(type) {
 		case *gotypes.Named:
-			if _, ok := r.mappedAliases[name]; ok {
+			if _, isLegacyAlias := r.mappedAliases[name]; isLegacyAlias {
 				r.namedAliases[name] = t
 				continue
 			}
-
 			if ok := r.finishNamedType(t, tt); !ok {
 				if r.loadConfig.Verbose {
 					log.Printf("package: %s, type: %s not mapped\n", p.Path, t.Obj().Name())
@@ -351,6 +390,14 @@ func (r *rootPackage) resolveInProgressTypes(s *gotypes.Scope, p *types.Package)
 		case *gotypes.Signature:
 			if !r.finishNamedFunc(t, tt) {
 				continue
+			}
+		default:
+			alias, ok := tt.(*types.Alias)
+			typeName, isTypeName := tp.(*gotypes.TypeName)
+			if !ok || !isTypeName || !r.finishAliasType(p, typeName, alias) {
+				if r.loadConfig.Verbose {
+					log.Printf("package: %s, alias: %s not mapped\n", p.Path, name)
+				}
 			}
 		}
 	}
@@ -429,6 +476,9 @@ func (r *rootPackage) parseComments(p *types.Package) {
 								}
 
 								for j, field := range structType.Fields.List {
+									if j >= len(tt.Fields) {
+										break
+									}
 									var fc string
 									if field.Doc != nil {
 										fc = field.Doc.Text()
@@ -450,6 +500,9 @@ func (r *rootPackage) parseComments(p *types.Package) {
 								}
 
 								for j, method := range interfaceType.Methods.List {
+									if j >= len(tt.Methods) {
+										break
+									}
 									var fc string
 									if method.Doc != nil {
 										fc = method.Doc.Text()
@@ -585,7 +638,9 @@ func (r *rootPackage) scaffoldPackageObjects() {
 		obj := s.Lookup(name)
 		switch ot := obj.(type) {
 		case *gotypes.TypeName:
-			if _, isAlias := r.mappedAliases[name]; isAlias {
+			_, isLegacyAlias := r.mappedAliases[name]
+			if ot.IsAlias() || isLegacyAlias {
+				r.mappedAliases[name] = struct{}{}
 				wt := &types.Alias{
 					Pkg:       r.refPkg,
 					AliasName: name,
@@ -653,6 +708,7 @@ func (r *rootPackage) scaffoldNamedObject(named *gotypes.Named, name string) {
 }
 
 func (r *rootPackage) finishNamedType(named *gotypes.Named, t types.Type) bool {
+	r.attachNamedGenericInfo(t, named)
 	switch ot := t.(type) {
 	case *types.Struct:
 		return r.finishNamedStructType(ot, named)
@@ -661,11 +717,13 @@ func (r *rootPackage) finishNamedType(named *gotypes.Named, t types.Type) bool {
 	case *types.Alias:
 		underlying, ok := r.dereferenceType(r.refPkg, named.Underlying())
 		if !ok {
-			panic(fmt.Sprintf("no underlying alias type found: %v", named.Underlying()))
+			log.Printf("no underlying alias type found: %v", named.Underlying())
+			return false
 		}
 		return r.finishNamedAliasType(named, ot, underlying)
 	default:
-		panic(fmt.Sprintf("invalid type %T", t))
+		log.Printf("invalid named Gentools type %T", t)
+		return false
 	}
 }
 
@@ -695,11 +753,17 @@ func (r *rootPackage) parseNamedType(et *gotypes.Named) (types.Type, bool) {
 	if !ok {
 		return nil, ok
 	}
-	return p.GetType(et.Obj().Name())
+	origin, ok := p.GetType(et.Obj().Name())
+	if !ok {
+		return nil, false
+	}
+	return r.instantiateNamed(origin, et)
 }
 
 func (r *rootPackage) dereferenceType(p *types.Package, tp gotypes.Type) (types.Type, bool) {
 	switch et := tp.(type) {
+	case *gotypes.TypeParam:
+		return r.typeParameter(p, p.Path, et), true
 	case *gotypes.Named:
 		return r.parseNamedType(et)
 	case *gotypes.Struct:
@@ -762,6 +826,9 @@ func (r *rootPackage) dereferenceType(p *types.Package, tp gotypes.Type) (types.
 		}
 		return ft, true
 	default:
+		if parsed, ok := r.parsePost119Type(p, et); ok {
+			return parsed, true
+		}
 		log.Printf("type not found for dereferencing: %s, %T\n", et.String(), et)
 		return nil, false
 	}
@@ -803,7 +870,9 @@ func (r *rootPackage) parseInterfaceMethods(p *types.Package, it *gotypes.Interf
 
 func (r *rootPackage) finishNamedStructType(t *types.Struct, named *gotypes.Named) bool {
 	p := r.refPkg
-	r.parseStructFields(p, named.Underlying().(*gotypes.Struct), t)
+	if !r.parseStructFields(p, named.Underlying().(*gotypes.Struct), t) {
+		return false
+	}
 
 	t.TypeName = named.Obj().Name()
 
@@ -868,6 +937,7 @@ func (r *rootPackage) parseMethod(p *types.Package, named astMethoder, i int, ne
 	if ok = r.parseSignatureType(p, s, &ft, needReceiver); !ok {
 		return types.Function{}, false
 	}
+	r.attachSignatureGenericInfo(&ft, s)
 	return ft, true
 }
 
@@ -916,6 +986,7 @@ func (r *rootPackage) finishNamedFunc(st *gotypes.Signature, t types.Type) bool 
 	if !r.parseSignatureType(r.refPkg, st, ft, false) {
 		return false
 	}
+	r.attachSignatureGenericInfo(ft, st)
 	return true
 }
 

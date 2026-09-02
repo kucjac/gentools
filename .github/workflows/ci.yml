@@ -3,69 +3,79 @@ name: Build, Test and Lint
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
-    name: Build and Test - Go ${{ matrix.go }} - ${{ matrix.os }}
+    name: Go 1.27.1 / ${{ matrix.os }} / build-test
     runs-on: ${{ matrix.os }}
     env:
-      CGO_ENABLED: 0
+      CGO_ENABLED: "0"
+      GODEBUG: gotypesalias=1
     strategy:
+      fail-fast: false
       matrix:
-        go: ['1.19.13']
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     steps:
-      - name: Checkout and prepare environment
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Setup Golang with cache
-        uses: magnetikonline/action-golang-cache@v1
+      - name: Set up Go 1.27.1
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
+          go-version: "1.27.1"
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: Get dependencies
+      - name: Root module dependency consistency
+        shell: bash
         run: |
-          go get -v -t -d ./...
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+          go mod verify
 
-      - name: Run 'go vet'
+      - name: Root module formatting
+        shell: bash
         run: |
-          go vet ./...
+          go fmt ./...
+          git diff --exit-code -- '*.go'
 
-      - name: Test
+      - name: Root module vet
+        run: go vet ./...
+
+      - name: Root module tests
+        run: go test -count=1 ./...
+
+      - name: Nested integration module tests
+        shell: bash
         run: |
+          cd internal/integration
+          go mod download
           go test -count=1 ./...
 
   golangci-lint:
-    name: GolangCI-Lint - Go ${{ matrix.go }} - ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    needs:
-      - build-and-test
-    strategy:
-      matrix:
-        go: ['1.19.13']
-        os: [macos-latest, windows-latest, ubuntu-latest]
+    name: Go 1.27.1 / ubuntu-latest / lint
+    runs-on: ubuntu-latest
+    env:
+      GODEBUG: gotypesalias=1
     steps:
-      - name: Checkout code into the Go module directory
-        uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v6
 
-      - name: Setup Golang with cache
-        uses: magnetikonline/action-golang-cache@v1
+      - name: Set up Go 1.27.1
+        uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.go }}
+          go-version: "1.27.1"
+          cache: true
+          cache-dependency-path: go.sum
 
-      - name: Use cache
-        uses: actions/cache@v2
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
         with:
-          path: ~/go/pkg/mod
-          key: ${{ matrix.go }}-${{ matrix.os }}-go-${{ hashFiles('**/go.sum') }}
-
-
-      - name: Check linters
-        uses: golangci/golangci-lint-action@v2
-        with:
-          version: v1.42.1
+          version: latest
+          args: ./...

@@ -73,6 +73,9 @@ func (i *Interface) getMethods() []Function {
 	return i.Methods
 }
 
+// GenericInfo returns additive metadata for the type parameters declared by i.
+func (i *Interface) GenericInfo() GenericInfo { return Generics(i) }
+
 // Implements checks if the type t implements interface 'interfaceType'.
 func Implements(t Type, interfaceType *Interface) bool {
 	var isPointer bool

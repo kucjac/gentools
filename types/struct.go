@@ -75,6 +75,9 @@ func (s *Struct) getMethods() []Function {
 	return s.Methods
 }
 
+// GenericInfo returns additive metadata for the type parameters declared by s.
+func (s *Struct) GenericInfo() GenericInfo { return Generics(s) }
+
 // StructField is a structure field model.
 type StructField struct {
 	Name      string

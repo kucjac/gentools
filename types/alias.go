@@ -82,6 +82,9 @@ func (a *Alias) getMethods() []Function {
 	return a.Methods
 }
 
+// GenericInfo returns additive metadata for the type parameters declared by a.
+func (a *Alias) GenericInfo() GenericInfo { return Generics(a) }
+
 func aliasOf(pkg *Package, name string, aType Type) *Alias {
 	a := &Alias{
 		Pkg:       pkg,

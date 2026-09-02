@@ -14,3 +14,9 @@
 # team members to install/update the extensions locally via specify CLI
 .specify/extensions/*/
 .specify/scripts/bash/
+
+# Go build and test artifacts
+*.exe
+*.test
+*.out
+vendor/

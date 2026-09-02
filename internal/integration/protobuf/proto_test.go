@@ -18,6 +18,9 @@ func TestProtobufs(t *testing.T) {
 
 	st, ok := tm.(*types.Struct)
 	require.True(t, ok)
+	require.Equal(t, types.KindStruct, st.Kind())
+	require.Equal(t, "github.com/kucjac/gentools/internal/integration/protobuf/TestingMessage", st.FullName())
+	require.NotEmpty(t, st.Fields)
 
 	for _, field := range st.Fields {
 		if field.Name == "Any" {

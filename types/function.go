@@ -116,3 +116,7 @@ func (r *Receiver) IsPointer() bool {
 	_, ok := r.Type.(*Pointer)
 	return ok
 }
+
+// GenericInfo returns additive metadata for the function's type parameters and
+// its receiver's type parameters, when present.
+func (f *Function) GenericInfo() GenericInfo { return Generics(f) }

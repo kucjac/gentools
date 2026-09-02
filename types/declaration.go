@@ -19,12 +19,12 @@ type Declaration struct {
 // ConstValue gets the basic value of given constant declaration type.
 // The method panics if the Declaration is not a constant but variable.
 // For selected field kind it returns following Value Types:
-//	- KindString 												- string
-//	- KindBool													- bool
-//	- KindInt, KindInt8, KindInt16, KindInt32, KindInt64: 		- int
-//	- KindUint, KindUint8, KindUint16, KindUint32, KindUint64: 	- uint
-//	- KindFloat64, KindFloat32:									- float64
-//	- KindComplex64, KindComplex128:							- complex128
+//   - KindString 												- string
+//   - KindBool													- bool
+//   - KindInt, KindInt8, KindInt16, KindInt32, KindInt64: 		- int
+//   - KindUint, KindUint8, KindUint16, KindUint32, KindUint64: 	- uint
+//   - KindFloat64, KindFloat32:									- float64
+//   - KindComplex64, KindComplex128:							- complex128
 func (d Declaration) ConstValue() interface{} {
 	if !d.Constant {
 		panic(fmt.Sprintf("declaration is not a constant: %s", d))

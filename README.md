@@ -22,15 +22,38 @@ The `types.PackageMap` contains context of mapped packages with their structs an
 The map could get loaded by using `LoadPackages` function or `types.PackageMap` method with the same name.
 Both of these loads provided input packages, whereas the method gets only required that doesn't already exist in itself.
 
+### Generic declarations
+
+Gentools preserves the existing concrete `types.Struct`, `types.Interface`,
+`types.Alias`, and `types.Function` values for generic declarations. Their
+additive `GenericInfo()` accessor exposes declared and receiver type parameters;
+each parameter includes its owner, ordinal, and constraint. A use such as
+`Box[string]` is represented by `*types.Instantiation`, whose `Origin` and
+ordered `Arguments` distinguish it from `Box[int]` and the uninstantiated
+declaration. Generic aliases are supported by the selected Go 1.27.1
+toolchain and require `GODEBUG=gotypesalias=1` while loading packages.
+
 ### Development
 
-The project toolkit is pinned to Go `1.19.13` through [`.go-version`](./.go-version).
+The project toolkit is pinned to Go `1.27.1` through [`.go-version`](./.go-version).
 Make targets use `go` from `PATH` and fail unless it reports the pinned version.
 Configure Go through your IDE or a version manager such as mise or asdf:
 
 ```sh
 make test
 ```
+
+### Go 1.27.1 migration and release policy
+
+This feature drops support for Go releases before 1.27.1. Upgrade the Go
+toolchain selected by your version manager or IDE to the version in
+`.go-version`, then run the validation commands in the feature
+[quickstart](./specs/001-generic-parser-compatibility/quickstart.md).
+
+A release containing this support-boundary change is breaking. Before
+publishing it, release it under the next major-version policy and include this
+migration guidance in the release notes, as required by the project
+constitution.
 
 Example:
 
