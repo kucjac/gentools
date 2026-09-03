@@ -73,7 +73,7 @@ description: "Dependency-ordered implementation tasks for OpenAPI contract gener
 ## Phase 6: Polish and cross-cutting validation
 
 - [X] T020 [P] Run `gofmt`, `git diff --check`, and the example package tests; record final evidence in `specs/003-openapi-contract-generator/quickstart.md`
-- [ ] T021 [P] Run `make build-and-test` and `make test-integration` to confirm no library or integration regression
+- [X] T021 [P] Run `make build-and-test` and `make test-integration` to confirm no library or integration regression
 - [X] T022 Run `make verify-docs` and the complete quickstart command from an isolated tracked-source snapshot; record results in `specs/003-openapi-contract-generator/quickstart.md`
 - [X] T023 Review the implementation against every FR/SC in `specs/003-openapi-contract-generator/spec.md`, then mark all completed tasks `[X]`
 

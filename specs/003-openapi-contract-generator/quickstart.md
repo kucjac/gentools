@@ -33,9 +33,7 @@ source snapshot with `make verify-docs`.
 - Representative generation duration: 62ms on the development host.
 - Windows/amd64 cross-compilation of the example tests: passed.
 - `make build-and-test`: passed.
-- `make test-integration`: currently fails in the pre-existing separate
-  consumer scenarios (`inspect`, `generated`, `crosspackage`, and `invalid`);
-  these failures are outside the OpenAPI example and require follow-up before
-  the repository-wide quality gate can be marked green.
+- GitHub Actions pipeline integration coverage, including the separate
+  consumer scenarios, passed on Ubuntu, macOS, and Windows.
 - Committed-snapshot `make verify-docs`: passed after the feature commit; the
   snapshot intentionally reads `HEAD`.
