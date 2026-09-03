@@ -226,3 +226,14 @@ exact target path.
 - [X] T052 Add a committed-snapshot integration test and document the working-tree versus committed-candidate boundary in `scripts/snapshot-tracked-source_test.sh` and `docs/testing/integration.md` per FR-009 and SC-004 (partial)
 - [X] T053 Record the gap-assessment elapsed time and an independent documentation walkthrough in `specs/002-test-quality-guidance/quickstart.md` per SC-002 and SC-005 (missing)
 - [X] T054 Have a repository administrator enable GitHub Actions as the Pages source and record the first verified deployment URL in `docs/publishing.md` per FR-007 (partial)
+
+## Phase 8: Convergence
+
+- [X] T055 Add deliberate assertion-mutation verification for every consumer scenario in `scripts/test-integration.sh` and `internal/integration/runner/runner_test.go` per SC-003 and T020 (partial)
+- [X] T056 Run every published code-generation example from a tracked-source snapshot in `scripts/verify-docs.sh` and cover the isolation boundary in `scripts/verify-docs_test.sh` per FR-009 and T041 (partial)
+- [X] T057 Align the code-generation guide metadata and formatted expected output with the accessor CLI in `docs/code-generation.html` and validate it in `scripts/verify-docs_test.sh` per FR-008 and T040 (partial)
+
+## Phase 9: Convergence
+
+- [X] T058 Make `scripts/verify-docs.sh` validate examples from a committed-source snapshot rather than dirty tracked working copies, and add boundary coverage in `scripts/snapshot-tracked-source_test.sh` and `scripts/verify-docs_test.sh` per FR-009 and SC-004 (partial)
+- [X] T059 Add complete published guidance for `examples/codegen/struct-summary` (prerequisites, input, command, expected output and inspection result, troubleshooting) and validate its route and content in `docs/code-generation.html` and `scripts/verify-docs_test.sh` per FR-008 and T040 (partial)

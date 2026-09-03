@@ -14,4 +14,4 @@ if [[ ${GENTOOLS_SNAPSHOT:-} != 1 ]]; then
 fi
 
 (cd "$repo/internal/integration" && env -u GOROOT -u GOTOOLCHAIN "$go_bin" run ./runner \
-  -manifest scenarios/scenarios.json -scenario "$scenario" -go "$go_bin")
+  -manifest scenarios/scenarios.json -scenario "$scenario" -go "$go_bin" -verify-mutations)
