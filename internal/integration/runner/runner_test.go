@@ -1,11 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+	if os.Getenv("RUNNER_TEST_FAKE_GO") == "1" {
+		if content, err := os.ReadFile("main_test.go"); err == nil && strings.Contains(string(content), "mutated") {
+			os.Exit(1)
+		}
+		fmt.Printf("executed %s\n", strings.Join(os.Args[1:], " "))
+		os.Exit(0)
+	}
+	os.Exit(m.Run())
+}
 
 func TestLoadRejectsIncompleteScenario(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "scenarios.json")
@@ -34,10 +46,8 @@ func TestRunSelectsScenarioAndLabelsBoundary(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "inspect", "main_test.go"), []byte("expected"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	goBin := filepath.Join(dir, "go")
-	if err := os.WriteFile(goBin, []byte("#!/bin/sh\nprintf 'executed %s\\n' \"$*\"\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	goBin := os.Args[0]
+	t.Setenv("RUNNER_TEST_FAKE_GO", "1")
 	var lines []string
 	if err := Run(manifest, "inspect", goBin, func(line string) { lines = append(lines, line) }); err != nil {
 		t.Fatal(err)
@@ -66,11 +76,8 @@ func TestRunWithMutationVerificationRequiresFailure(t *testing.T) {
 	if err := os.WriteFile(testFile, []byte("expected"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	goBin := filepath.Join(dir, "go")
-	script := "#!/bin/sh\nif grep -q mutated main_test.go; then exit 1; fi\nexit 0\n"
-	if err := os.WriteFile(goBin, []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	goBin := os.Args[0]
+	t.Setenv("RUNNER_TEST_FAKE_GO", "1")
 	var lines []string
 	if err := RunWithMutationVerification(manifest, "inspect", goBin, func(line string) { lines = append(lines, line) }); err != nil {
 		t.Fatal(err)
