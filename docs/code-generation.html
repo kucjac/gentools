@@ -54,6 +54,16 @@ package generated
 
 var StructNames = []string{"Account", "Session"}</code></pre>
     <p class="note">If the summary is empty, check that the input directory is a loadable Go package and declares named structs. If it still differs from the golden file, run <code>make verify-docs</code> to reproduce the validated example check.</p>
+    <h2>OpenAPI contract</h2>
+    <p>Use the contract example to turn source-adjacent operation comments and public model metadata into one OpenAPI 3 document. It is a consumer-owned example and does not add a generator API to Gentools.</p>
+    <h3>Input and command</h3>
+    <p>Run it against <code>examples/codegen/openapi-contract/testdata</code>:</p>
+    <pre><code>go run ./examples/codegen/openapi-contract \
+  -input ./examples/codegen/openapi-contract/testdata \
+  -output /tmp/gentools-openapi.json</code></pre>
+    <p>An operation comment uses <code>@openapi method=GET route=/pets/{id} summary="Get a pet" response=200:Pet</code>. The first version supports documented GET operations, path parameters, primitive/pointer/slice/struct model fields, JSON tags, and shared model references.</p>
+    <h3>Expected result and diagnostics</h3>
+    <p>Inspect <code>/tmp/gentools-openapi.json</code> and compare it with <a href="https://github.com/kucjac/gentools/blob/main/examples/codegen/openapi-contract/testdata/openapi.golden.json">the checked-in golden contract</a>. Malformed annotations, duplicate method/route pairs, unresolved models, and unsupported field shapes fail before output is replaced. Run <code>make verify-docs</code> to validate the published example from an isolated tracked-source snapshot.</p>
     <p><a class="button" href="index.html">Back to all guides</a></p>
   </main>
   <footer class="site-footer">Gentools is an open-source Go library. <a href="https://github.com/kucjac/gentools">Explore it on GitHub</a>.</footer>

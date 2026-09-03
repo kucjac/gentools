@@ -32,6 +32,10 @@ env -u GOROOT -u GOTOOLCHAIN "$go_bin" run ./examples/codegen/struct-accessors -
 normalize_newlines "$tmp/account_accessors.go" "$tmp/account_accessors.normalized.go"
 normalize_newlines "$repo/examples/codegen/struct-accessors/testdata/zz_account_accessors.golden.go" "$tmp/account_accessors.golden.normalized"
 cmp "$tmp/account_accessors.normalized.go" "$tmp/account_accessors.golden.normalized"
+env -u GOROOT -u GOTOOLCHAIN "$go_bin" run ./examples/codegen/openapi-contract -input ./examples/codegen/openapi-contract/testdata -output "$tmp/openapi.json"
+normalize_newlines "$tmp/openapi.json" "$tmp/openapi.normalized.json"
+normalize_newlines "$repo/examples/codegen/openapi-contract/testdata/openapi.golden.json" "$tmp/openapi.golden.normalized.json"
+cmp "$tmp/openapi.normalized.json" "$tmp/openapi.golden.normalized.json"
 while IFS= read -r -d '' page; do
   while IFS= read -r link; do
     case $link in http*|\#*|mailto:*) continue;; esac

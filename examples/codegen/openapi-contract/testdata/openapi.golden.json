@@ -1,0 +1,91 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Gentools example API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/pets": {
+      "get": {
+        "summary": "List pets",
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pets/{id}": {
+      "get": {
+        "summary": "Get a pet",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pet"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Pet": {
+        "type": "object",
+        "description": "Pet is the shared public response model.",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "ID identifies the pet."
+          },
+          "name": {
+            "type": "string",
+            "description": "Name is the display name."
+          },
+          "owner": {
+            "$ref": "#/components/schemas/shared_Profile"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "shared_Profile": {
+        "type": "object",
+        "description": "Profile is a nested cross-package model.",
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "description": "DisplayName is the public display name."
+          }
+        }
+      }
+    }
+  }
+}

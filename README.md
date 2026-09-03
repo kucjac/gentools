@@ -93,6 +93,22 @@ go run ./examples/codegen/struct-accessors \
   -output /tmp/account_accessors.go
 ```
 
+For an annotated API contract example, run:
+
+```sh
+go run ./examples/codegen/openapi-contract \
+  -input ./examples/codegen/openapi-contract/testdata \
+  -output /tmp/gentools-openapi.json
+```
+
+Operations use comments such as `@openapi method=GET route=/pets/{id}
+summary="Get a pet" response=200:Pet`. The example supports documented
+primitive, pointer, slice, and nested struct fields, reuses shared model
+definitions, and fails with a source declaration diagnostic for malformed,
+duplicate, unresolved, or unsupported input. See the [OpenAPI contract
+quickstart](./specs/003-openapi-contract-generator/quickstart.md) and the
+[code-generation guide](https://kucjac.github.io/gentools/code-generation.html).
+
 GitHub Pages publication is configured by `.github/workflows/pages.yml`; a
 repository administrator must select GitHub Actions as the Pages source as
 described in [docs/publishing.md](docs/publishing.md).
