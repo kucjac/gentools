@@ -1,3 +1,33 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Gentools code generation</title></head>
-<body><main><h1>Generate a struct summary</h1><p>This consumer-owned example inspects Go structs and emits deterministic Go source; it does not add a Gentools generator API.</p><h2>Prerequisites</h2><p>Use the Go version in <code>.go-version</code>.</p><h2>Run</h2><pre>go run ./examples/codegen/struct-summary -input ./examples/codegen/struct-summary/testdata -output /tmp/summary.go</pre><h2>Expected output</h2><p>The output contains <code>Account</code> and <code>Session</code>; compare it with <a href="https://github.com/kucjac/gentools/blob/main/examples/codegen/struct-summary/testdata/zz_summary.golden">the checked-in golden file</a>.</p><h2>Troubleshooting</h2><p>Confirm the input is a loadable Go package and run <code>make test-quality</code> for validation.</p><p><a href="index.html">Back to guides</a></p></main></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Generate a deterministic Go struct summary with Gentools.">
+  <title>Struct summary · Gentools guides</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="index.html">gen<span>tools</span></a>
+    <nav class="site-nav" aria-label="Primary navigation"><a href="index.html">Guides</a><a href="https://github.com/kucjac/gentools">GitHub</a></nav>
+  </header>
+  <main id="content" class="content">
+    <p class="eyebrow">Runnable example</p>
+    <h1>Generate a struct summary.</h1>
+    <p class="lede">A consumer-owned example that inspects Go structs and emits deterministic Go source. It does not add a Gentools generator API.</p>
+    <h2>Prerequisites</h2>
+    <p>Use the Go version declared in <code>.go-version</code>.</p>
+    <h2>Run it</h2>
+    <pre><code>go run ./examples/codegen/struct-summary \
+  -input ./examples/codegen/struct-summary/testdata \
+  -output /tmp/summary.go</code></pre>
+    <h2>What to expect</h2>
+    <p>The output contains <code>Account</code> and <code>Session</code>. Compare it with <a href="https://github.com/kucjac/gentools/blob/main/examples/codegen/struct-summary/testdata/zz_summary.golden">the checked-in golden file</a>.</p>
+    <p class="note">If loading fails, confirm that the input is a loadable Go package, then run <code>make test-quality</code> for the complete validation workflow.</p>
+    <p><a class="button" href="index.html">Back to all guides</a></p>
+  </main>
+  <footer class="site-footer">Gentools is an open-source Go library. <a href="https://github.com/kucjac/gentools">Explore it on GitHub</a>.</footer>
+</body>
+</html>

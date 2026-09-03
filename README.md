@@ -5,6 +5,7 @@
 [![GoReportCard example](https://goreportcard.com/badge/github.com/kucjac/gentools)](https://goreportcard.com/report/github.com/kucjac/gentools)
 [![GoDoc reference example](https://img.shields.io/badge/godoc-reference-blue.svg)](https://godoc.org/github.com/kucjac/gentools)
 [![GitHub release](https://img.shields.io/github/release/kucjac/gentools.svg)](https://GitHub.com/kucjac/gentools/releases/)
+[![GitHub Pages](https://img.shields.io/website?url=https%3A%2F%2Fkucjac.github.io%2Fgentools%2F&label=guides)](https://kucjac.github.io/gentools/)
 
 ![Gopher](./gopher.png)
 
@@ -44,6 +45,9 @@ make test
 ```
 
 ### Test quality and examples
+
+Visit the [Gentools guides](https://kucjac.github.io/gentools/) for a polished,
+browser-friendly entry point to the runnable example and testing guidance.
 
 Run the complete quality workflow with the selected toolchain:
 

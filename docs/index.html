@@ -1,3 +1,41 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Gentools guides</title></head>
-<body><main><h1>Gentools guides</h1><p>Gentools is a Go source-analysis library. Examples use the repository-selected Go toolchain.</p><ul><li><a href="code-generation.html">Generate a struct summary</a></li><li><a href="testing/integration.md">Consumer integration scenarios</a></li><li><a href="testing/unit-test-gaps.md">Assess unit-test gaps</a></li><li><a href="publishing.md">Publish this site</a></li></ul></main></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Practical guides for Gentools, a Go source-analysis library.">
+  <title>Gentools guides</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="index.html">gen<span>tools</span></a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a aria-current="page" href="index.html">Guides</a>
+      <a href="https://github.com/kucjac/gentools">GitHub</a>
+    </nav>
+  </header>
+  <main id="content">
+    <section class="hero">
+      <p class="eyebrow">Go source analysis</p>
+      <h1>Guides for building with Gentools.</h1>
+      <p class="lede">Start with a runnable example, validate consumer workflows, and keep library contracts well tested.</p>
+      <div class="button-row">
+        <a class="button primary" href="code-generation.html">Try the code-generation example</a>
+        <a class="button" href="https://github.com/kucjac/gentools">View the repository</a>
+      </div>
+    </section>
+    <section class="section" aria-labelledby="guide-heading">
+      <p class="eyebrow">Choose a guide</p>
+      <h2 id="guide-heading">Useful paths, without the ceremony.</h2>
+      <div class="card-grid">
+        <a class="card" href="code-generation.html"><h2>Struct summary</h2><p>Generate deterministic Go source from discovered structs using the public API.</p></a>
+        <a class="card" href="testing/integration.md"><h2>Consumer scenarios</h2><p>Understand candidate-source validation and the release-only smoke check.</p></a>
+        <a class="card" href="testing/unit-test-gaps.md"><h2>Test gaps</h2><p>Use the behavior inventory and coverage evidence to prioritize verification.</p></a>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">Gentools is an open-source Go library. <a href="https://github.com/kucjac/gentools">Explore it on GitHub</a>.</footer>
+</body>
+</html>
