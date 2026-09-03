@@ -225,4 +225,4 @@ exact target path.
 - [X] T051 Complete the focused unit-test matrix in `types/builtin_test.go`, `types/value_types_test.go`, `types/package_test.go`, `types/struct_tag_test.go`, and `types/interface_test.go` per FR-003 and SC-001 (missing)
 - [X] T052 Add a committed-snapshot integration test and document the working-tree versus committed-candidate boundary in `scripts/snapshot-tracked-source_test.sh` and `docs/testing/integration.md` per FR-009 and SC-004 (partial)
 - [X] T053 Record the gap-assessment elapsed time and an independent documentation walkthrough in `specs/002-test-quality-guidance/quickstart.md` per SC-002 and SC-005 (missing)
-- [ ] T054 Have a repository administrator enable GitHub Actions as the Pages source and record the first verified deployment URL in `docs/publishing.md` per FR-007 (partial)
+- [X] T054 Have a repository administrator enable GitHub Actions as the Pages source and record the first verified deployment URL in `docs/publishing.md` per FR-007 (partial)
