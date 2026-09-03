@@ -68,6 +68,14 @@
           "owner": {
             "$ref": "#/components/schemas/shared_Profile"
           },
+          "rating": {
+            "type": "number",
+            "format": "float"
+          },
+          "score": {
+            "type": "number",
+            "format": "double"
+          },
           "tags": {
             "type": "array",
             "items": {

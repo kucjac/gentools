@@ -34,6 +34,12 @@ func TestGenerateMatchesGoldenAndReusesModel(t *testing.T) {
 	if got := document.Components.Schemas["Pet"].Properties["owner"].Ref; got != "#/components/schemas/shared_Profile" {
 		t.Fatalf("owner reference = %q", got)
 	}
+	if got := document.Components.Schemas["Pet"].Properties["rating"]; got.Type != "number" || got.Format != "float" {
+		t.Fatalf("rating schema = %#v, want number/float", got)
+	}
+	if got := document.Components.Schemas["Pet"].Properties["score"]; got.Type != "number" || got.Format != "double" {
+		t.Fatalf("score schema = %#v, want number/double", got)
+	}
 }
 
 func normalizeNewlines(value string) string {
@@ -54,6 +60,7 @@ func TestGenerateRejectsInvalidInputWithoutReplacingOutput(t *testing.T) {
 		{"missing route", "testdata/invalid/missing-route", "requires method, route"},
 		{"missing method", "testdata/invalid/missing-method", "requires method, route"},
 		{"missing response", "testdata/invalid/missing-response", "requires method, route"},
+		{"non-success response", "testdata/invalid/non-success-response", "response status must be 2xx"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			output := filepath.Join(t.TempDir(), "contract.json")

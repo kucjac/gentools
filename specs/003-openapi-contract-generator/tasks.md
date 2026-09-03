@@ -101,3 +101,11 @@ Remaining work identified by code-aware comparison of the implementation with
 - [X] T026 [US1] Resolve model definitions by stable package-qualified identity and add a collision/cross-package shared-model test in `examples/codegen/openapi-contract/main.go` and `examples/codegen/openapi-contract/main_test.go` per FR-003, FR-005, and the cross-package edge case (partial)
 - [X] T027 [US2] Verify and, if necessary, implement portable atomic replacement of an existing output on the repository’s Windows CI target in `examples/codegen/openapi-contract/main.go` and `examples/codegen/openapi-contract/main_test.go` per FR-007 and the plan portability constraint (partial)
 - [X] T028 [US3] Record measured command duration for SC-001 and run the published example from an isolated tracked-source snapshot for SC-004 in `specs/003-openapi-contract-generator/quickstart.md` after the feature files are tracked (partial)
+
+## Phase 8: Convergence follow-up
+
+Remaining work identified by the second code-aware comparison of the implementation with
+`spec.md`, `plan.md`, and the completed tasks.
+
+- [X] T029 [US1] Map Go `float32` and `float64` fields to OpenAPI `number` schemas with the appropriate floating-point format, and add fixture/golden coverage in `examples/codegen/openapi-contract/main.go` and `examples/codegen/openapi-contract/main_test.go` per FR-004 and the primitive-shape scope
+- [X] T030 [US2] Validate the declared response status as a success status for the single-success-response scope, reject non-2xx statuses with a source diagnostic, and add invalid-fixture coverage in `examples/codegen/openapi-contract/main.go` and `examples/codegen/openapi-contract/main_test.go` per FR-003, FR-006, and the documented response edge case

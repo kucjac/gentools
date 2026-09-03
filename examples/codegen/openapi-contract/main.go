@@ -229,8 +229,12 @@ func generate(input, output string) error {
 			seenRoutes[key] = name
 			statusModel := strings.SplitN(ann.Response, ":", 2)
 			status, modelName := statusModel[0], statusModel[1]
-			if _, err := strconv.Atoi(status); err != nil {
-				return fmt.Errorf("operation %s: invalid response status %q", name, status)
+			statusCode, err := strconv.Atoi(status)
+			if err != nil || statusCode < 200 || statusCode > 299 {
+				if err != nil {
+					return fmt.Errorf("operation %s: invalid response status %q", name, status)
+				}
+				return fmt.Errorf("operation %s: response status must be 2xx, got %q", name, status)
 			}
 			model, resolveErr := models.resolve(modelName, pkg)
 			if resolveErr != nil {
@@ -339,7 +343,13 @@ func schemaFor(tp types.Type, definitions map[string]schema, models *modelRegist
 		if kind == types.KindString {
 			return schema{Type: "string"}, nil
 		}
-		if kind.IsNumber() {
+		if kind == types.KindFloat32 {
+			return schema{Type: "number", Format: "float"}, nil
+		}
+		if kind == types.KindFloat64 {
+			return schema{Type: "number", Format: "double"}, nil
+		}
+		if kind >= types.KindInt && kind <= types.KindUintptr {
 			format := ""
 			if kind == types.KindInt64 {
 				format = "int64"

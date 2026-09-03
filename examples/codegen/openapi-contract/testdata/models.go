@@ -12,6 +12,8 @@ type Pet struct {
 	// Name is the display name.
 	Name    string          `json:"name"`
 	Tags    []string        `json:"tags,omitempty"`
+	Rating  float32         `json:"rating"`
+	Score   float64         `json:"score"`
 	Owner   *shared.Profile `json:"owner,omitempty"`
 	Ignored string          `json:"-"`
 }
