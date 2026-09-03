@@ -1,0 +1,8 @@
+{
+  "scenarios": [
+    {"name":"inspect","source_input":"scenarios/inspect","module_boundary":"temporary tracked candidate snapshot","expected_result":"declared struct is found","failure_expectation":"non-zero test failure","mutation_check":"change expected struct name"},
+    {"name":"generated","source_input":"../../protobuf/models.pb.go","module_boundary":"temporary tracked candidate snapshot","expected_result":"TestingMessage fields and imports are found","failure_expectation":"non-zero test failure","mutation_check":"change expected field count"},
+    {"name":"crosspackage","source_input":"scenarios/crosspackage/testdata","module_boundary":"temporary tracked candidate snapshot","expected_result":"generic instantiation origin and arguments are found","failure_expectation":"non-zero test failure","mutation_check":"change expected argument"},
+    {"name":"invalid","source_input":"scenarios/invalid/testdata/invalid.go","module_boundary":"temporary tracked candidate snapshot","expected_result":"loader returns an error","failure_expectation":"actionable compiler or import diagnostic","mutation_check":"accept a successful load"}
+  ]
+}

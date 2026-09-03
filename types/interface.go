@@ -114,7 +114,7 @@ func implements(interfaceToImplement *Interface, implementer methoder, pointer b
 				if sMethod.Variadic != iMethod.Variadic {
 					return false
 				}
-				if sMethod.Receiver.IsPointer() && !pointer {
+				if sMethod.Receiver != nil && sMethod.Receiver.IsPointer() && !pointer {
 					return false
 				}
 

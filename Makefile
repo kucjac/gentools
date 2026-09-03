@@ -39,3 +39,14 @@ build-and-test: check-go
 golangci-lint: check-go
 	@echo "Job: GolangCI Lint"
 	@$(GOLANGCI_LINT)
+
+test-integration: check-go
+	@GODEBUG=gotypesalias=1 scripts/test-integration.sh all
+
+test-gaps: check-go
+	@GODEBUG=gotypesalias=1 scripts/assess-test-gaps.sh
+
+verify-docs: check-go
+	@GODEBUG=gotypesalias=1 scripts/verify-docs.sh
+
+test-quality: test test-integration test-gaps verify-docs

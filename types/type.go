@@ -35,12 +35,8 @@ type Packager interface {
 // Dereference is getting Type dereferenced basic value.
 // If the value is basic returns nil.
 func Dereference(t Type) Type {
-	var e Type
-	for {
-		if e = t.Elem(); e == nil {
-			break
-		}
-		t = e
+	for next := t.Elem(); next != nil; next = t.Elem() {
+		t = next
 	}
-	return e
+	return t
 }

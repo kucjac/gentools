@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package gentools.internal.integration.protobuf;
 
-option go_package = "github.com/kucjac/gentoos/internal/integration/protobuf";
+option go_package = "github.com/kucjac/gentools/internal/integration/protobuf";
 
 import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";

@@ -43,6 +43,30 @@ Configure Go through your IDE or a version manager such as mise or asdf:
 make test
 ```
 
+### Test quality and examples
+
+Run the complete quality workflow with the selected toolchain:
+
+```sh
+make test-quality
+```
+
+The consumer scenarios distinguish candidate-source validation from the
+tag-triggered published-module smoke test. See [the integration guide](docs/testing/integration.md)
+and [unit-test gap assessment](docs/testing/unit-test-gaps.md).
+
+For a runnable code-generation example, create a deterministic struct summary:
+
+```sh
+go run ./examples/codegen/struct-summary \
+  -input ./examples/codegen/struct-summary/testdata \
+  -output /tmp/summary.go
+```
+
+GitHub Pages publication is configured by `.github/workflows/pages.yml`; a
+repository administrator must select GitHub Actions as the Pages source as
+described in [docs/publishing.md](docs/publishing.md).
+
 ### Go 1.27.1 migration and release policy
 
 This feature drops support for Go releases before 1.27.1. Upgrade the Go

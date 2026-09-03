@@ -58,6 +58,18 @@ jobs:
           go mod download
           go test -count=1 ./...
 
+      - name: Unit-test gap assessment
+        shell: bash
+        run: GODEBUG=gotypesalias=1 scripts/assess-test-gaps.sh
+
+      - name: Consumer integration scenarios
+        shell: bash
+        run: GODEBUG=gotypesalias=1 scripts/test-integration.sh all
+
+      - name: Documentation and Pages artifact validation
+        shell: bash
+        run: GODEBUG=gotypesalias=1 scripts/verify-docs.sh
+
   golangci-lint:
     name: Go 1.27.1 / ubuntu-latest / lint
     runs-on: ubuntu-latest

@@ -1,0 +1,27 @@
+name: Published Module Smoke Test
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  consume-published-module:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v6
+        with:
+          go-version: "1.27.1"
+      - run: |
+          tmp=$(mktemp -d)
+          cd "$tmp"
+          go mod init example.invalid/gentools-smoke
+          go get github.com/kucjac/gentools@${GITHUB_REF_NAME}
+          cat > main.go <<'EOF'
+          package main
+          import _ "github.com/kucjac/gentools/parser"
+          func main() {}
+          EOF
+          go build ./...

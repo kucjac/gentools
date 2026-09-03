@@ -119,9 +119,7 @@ func (s StructTagTuples) Join() StructTag {
 	for i := range s {
 		sb.WriteString(s[i].Key)
 		sb.WriteRune(':')
-		sb.WriteRune('"')
-		sb.WriteString(s[i].Value)
-		sb.WriteRune('"')
+		sb.WriteString(strconv.Quote(s[i].Value))
 		if i != len(s)-1 {
 			sb.WriteRune(' ')
 		}
