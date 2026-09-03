@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"go/ast"
 	gotypes "go/types"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -98,7 +97,7 @@ func UpdatePackages(p types.PackageMap, cfg LoadConfig) error {
 
 // PackageNameOfDir get package import path via dir
 func PackageNameOfDir(srcDir string) (string, error) {
-	files, err := ioutil.ReadDir(srcDir)
+	files, err := os.ReadDir(srcDir)
 	if err != nil {
 		return "", err
 	}
@@ -998,19 +997,17 @@ func parsePackageImport(srcDir string) (string, error) {
 	if moduleMode != "off" {
 		currentDir := srcDir
 		for {
-			dat, err := ioutil.ReadFile(filepath.Join(currentDir, "go.mod"))
-			if os.IsNotExist(err) {
-				if currentDir == filepath.Dir(currentDir) {
-					// at the root
-					break
-				}
-				currentDir = filepath.Dir(currentDir)
-				continue
-			} else if err != nil {
+			if dat, err := os.ReadFile(filepath.Join(currentDir, "go.mod")); err == nil {
+				modulePath := modfile.ModulePath(dat)
+				return filepath.ToSlash(filepath.Join(modulePath, strings.TrimPrefix(srcDir, currentDir))), nil
+			} else if !os.IsNotExist(err) {
 				return "", err
 			}
-			modulePath := modfile.ModulePath(dat)
-			return filepath.ToSlash(filepath.Join(modulePath, strings.TrimPrefix(srcDir, currentDir))), nil
+			if currentDir == filepath.Dir(currentDir) {
+				// at the root
+				break
+			}
+			currentDir = filepath.Dir(currentDir)
 		}
 	}
 	// fall back to GOPATH mode
