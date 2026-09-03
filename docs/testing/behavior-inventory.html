@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Gentools behavior inventory report.">
+  <title>Behavior inventory · Gentools guides</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="../index.html">gen<span>tools</span></a><nav class="site-nav" aria-label="Primary navigation"><a href="../index.html">Guides</a><a href="https://github.com/kucjac/gentools">GitHub</a></nav></header>
+  <main id="content" class="content">
+    <p class="breadcrumb"><a href="../index.html">Guides</a> / <a href="unit-test-gaps.html">Test gaps</a> / Behavior inventory</p>
+    <p class="eyebrow">Reviewed report</p>
+    <h1>Behavior inventory.</h1>
+    <p class="lede">Coverage is supporting evidence, not proof of behavioral completeness.</p>
+    <p><code>parser.*</code> and <code>types.*</code> are reviewed package-level public API groups. Linked evidence and high-risk internal behavior retain focused scrutiny.</p>
+    <table>
+      <thead><tr><th>ID</th><th>Symbol</th><th>Risk</th><th>Test level</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>LOADER-INTERNAL</td><td>parser.loadPackages</td><td>High</td><td>Integration</td><td>Verified</td></tr>
+        <tr><td>PARSER-PUBLIC</td><td>parser.*</td><td>High</td><td>Integration</td><td>Verified</td></tr>
+        <tr><td>PROTOBUF-GENERATED</td><td>Generated protobuf</td><td>Low</td><td>Excluded</td><td>Excluded</td></tr>
+        <tr><td>TYPES-PUBLIC</td><td>types.*</td><td>High</td><td>Unit</td><td>Verified</td></tr>
+      </tbody>
+    </table>
+    <p><a class="button" href="unit-test-gaps.html">Back to test gaps</a></p>
+  </main>
+  <footer class="site-footer">Gentools is an open-source Go library. <a href="https://github.com/kucjac/gentools">Explore it on GitHub</a>.</footer>
+</body>
+</html>

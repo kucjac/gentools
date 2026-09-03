@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="How Gentools guides are published to GitHub Pages.">
+  <title>Publishing · Gentools guides</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="index.html">gen<span>tools</span></a><nav class="site-nav" aria-label="Primary navigation"><a href="index.html">Guides</a><a href="https://github.com/kucjac/gentools">GitHub</a></nav></header>
+  <main id="content" class="content">
+    <p class="breadcrumb"><a href="index.html">Guides</a> / Publishing</p>
+    <p class="eyebrow">Maintainer guide</p>
+    <h1>Publish the guides.</h1>
+    <p class="lede">The deployment workflow publishes only the Pages artifact produced by the documentation validator.</p>
+    <h2>How it works</h2>
+    <p>The workflow in <code>.github/workflows/pages.yml</code> validates the example and links, creates a static artifact, and deploys it from <code>main</code>. GitHub Pages uses GitHub Actions as its publishing source.</p>
+    <h2>Verified deployment</h2>
+    <p><a href="https://kucjac.github.io/gentools/">https://kucjac.github.io/gentools/</a> was verified on 2026-09-03 from the successful <a href="https://github.com/kucjac/gentools/actions/runs/33728206349">Pages deployment workflow</a>.</p>
+    <p class="note">Protect the <code>github-pages</code> environment according to the repository release policy.</p>
+    <p><a class="button" href="index.html">Back to all guides</a></p>
+  </main>
+  <footer class="site-footer">Gentools is an open-source Go library. <a href="https://github.com/kucjac/gentools">Explore it on GitHub</a>.</footer>
+</body>
+</html>

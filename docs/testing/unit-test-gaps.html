@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Assess Gentools unit-test gaps by public-contract risk.">
+  <title>Test gaps · Gentools guides</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="../index.html">gen<span>tools</span></a><nav class="site-nav" aria-label="Primary navigation"><a href="../index.html">Guides</a><a href="https://github.com/kucjac/gentools">GitHub</a></nav></header>
+  <main id="content" class="content">
+    <p class="breadcrumb"><a href="../index.html">Guides</a> / Test gaps</p>
+    <p class="eyebrow">Test quality</p>
+    <h1>Prioritize tests by contract risk.</h1>
+    <p class="lede">The behavior inventory keeps coverage evidence connected to the public behavior it is meant to protect.</p>
+    <h2>Run the assessment</h2>
+    <pre><code>make test-gaps</code></pre>
+    <p>Use the Go version declared in <code>.go-version</code>. The assessment verifies that every exported <code>parser</code> and <code>types</code> declaration is classified, its evidence path exists, and high-risk gaps are rejected.</p>
+    <h2>Use the results well</h2>
+    <p>Coverage counts basic blocks; it does not prove public contracts or useful assertions. Add new symbols to the behavior inventory in the same change, document why generated or integration-only behavior is excluded, and add focused regression tests for high-risk behavior.</p>
+    <p class="note">The behavior inventory is available as a <a href="behavior-inventory.html">reviewable report</a>.</p>
+    <p><a class="button" href="../index.html">Back to all guides</a></p>
+  </main>
+  <footer class="site-footer">Gentools is an open-source Go library. <a href="https://github.com/kucjac/gentools">Explore it on GitHub</a>.</footer>
+</body>
+</html>

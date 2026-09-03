@@ -59,13 +59,20 @@ h2 { margin-top: 2.5rem; font-size: clamp(1.55rem, 3vw, 2.25rem); }
 .content { max-width: 54rem; padding: 2.25rem 0 4.5rem; }
 .content h1 { font-size: clamp(2.45rem, 6vw, 4.3rem); }
 .content p, .content li { color: var(--muted); }
+.breadcrumb { margin: 0 0 1.5rem; color: var(--muted); font-size: .92rem; }
+.breadcrumb a { color: var(--muted); }
 pre { overflow-x: auto; padding: 1rem 1.15rem; border: 1px solid var(--border); border-radius: .65rem; background: #060c16; color: #d4e8ff; }
 code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 .note { padding: 1rem 1.15rem; border-left: 3px solid var(--accent); border-radius: 0 .55rem .55rem 0; background: rgb(102 227 189 / 10%); }
+table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; overflow: hidden; border: 1px solid var(--border); border-radius: .65rem; }
+th, td { padding: .75rem; border-bottom: 1px solid var(--border); text-align: left; }
+th { color: var(--text); background: var(--surface-raised); }
+td { color: var(--muted); }
 .site-footer { padding: 1.5rem 0 2.5rem; border-top: 1px solid var(--border); color: var(--muted); font-size: .9rem; }
 
 @media (max-width: 720px) {
   .site-header { align-items: flex-start; flex-direction: column; }
   .hero { padding-top: 3rem; }
   .card-grid { grid-template-columns: 1fr; }
+  table { display: block; overflow-x: auto; }
 }

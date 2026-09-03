@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Run Gentools consumer integration scenarios.">
+  <title>Consumer scenarios · Gentools guides</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header"><a class="brand" href="../index.html">gen<span>tools</span></a><nav class="site-nav" aria-label="Primary navigation"><a href="../index.html">Guides</a><a href="https://github.com/kucjac/gentools">GitHub</a></nav></header>
+  <main id="content" class="content">
+    <p class="breadcrumb"><a href="../index.html">Guides</a> / Consumer scenarios</p>
+    <p class="eyebrow">Integration testing</p>
+    <h1>Validate real consumer workflows.</h1>
+    <p class="lede">The scenario suite exercises Gentools as a consumer would, from a temporary snapshot of tracked source.</p>
+    <h2>Run the suite</h2>
+    <pre><code>make test-integration</code></pre>
+    <p>This runs <code>inspect</code>, <code>generated</code>, <code>crosspackage</code>, and <code>invalid</code>. Its output is <strong>candidate-source evidence</strong>: it validates the checked-out contract, not a published release.</p>
+    <p class="note">For published-module evidence, use the tag-triggered release smoke workflow. It intentionally has no local <code>replace</code> directive.</p>
+    <h2>Generated protobuf preflight</h2>
+    <p>Generated fixtures are regenerated rather than edited manually. Ensure <code>protoc</code> and <code>protoc-gen-go</code> are installed and available on <code>PATH</code>, then run:</p>
+    <pre><code>protoc -I internal/integration/protobuf -I /usr/include \
+  --go_out=paths=source_relative:internal/integration/protobuf \
+  internal/integration/protobuf/models.proto
+git diff --check -- internal/integration/protobuf/models.pb.go</code></pre>
+    <p>Record generator versions with any generated-output change, then rerun the generated consumer scenario.</p>
+    <p><a class="button" href="../index.html">Back to all guides</a></p>
+  </main>
+  <footer class="site-footer">Gentools is an open-source Go library. <a href="https://github.com/kucjac/gentools">Explore it on GitHub</a>.</footer>
+</body>
+</html>

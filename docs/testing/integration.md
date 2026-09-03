@@ -16,7 +16,7 @@ The protobuf fixture is regenerated, never edited by hand. From the repository
 root, use the checked generator and include paths:
 
 ```sh
-PATH=/workspace/go/gopath/bin:$PATH protoc \
+protoc \
   -I internal/integration/protobuf -I /usr/include \
   --go_out=paths=source_relative:internal/integration/protobuf \
   internal/integration/protobuf/models.proto
