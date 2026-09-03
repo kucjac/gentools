@@ -11,6 +11,8 @@ tmp=$(mktemp -d "${TMPDIR:-/tmp}/gentools-example.XXXXXX")
 trap 'rm -rf -- "$tmp"; $cleanup && rm -rf -- "$artifact"' EXIT
 env -u GOROOT -u GOTOOLCHAIN "$go_bin" run ./examples/codegen/struct-summary -input ./examples/codegen/struct-summary/testdata -output "$tmp/summary.go"
 cmp "$tmp/summary.go" "$repo/examples/codegen/struct-summary/testdata/zz_summary.golden"
+env -u GOROOT -u GOTOOLCHAIN "$go_bin" run ./examples/codegen/struct-accessors -input ./examples/codegen/struct-accessors/testdata -type Account -fields ID,Email -output "$tmp/account_accessors.go"
+cmp "$tmp/account_accessors.go" "$repo/examples/codegen/struct-accessors/testdata/zz_account_accessors.golden.go"
 for page in "$repo"/docs/*.html; do
   test -f "$page"
   while IFS= read -r link; do

@@ -67,6 +67,16 @@ go run ./examples/codegen/struct-summary \
   -output /tmp/summary.go
 ```
 
+To generate typed getters for only the fields you select, run:
+
+```sh
+go run ./examples/codegen/struct-accessors \
+  -input ./examples/codegen/struct-accessors/testdata \
+  -type Account \
+  -fields ID,Email \
+  -output /tmp/account_accessors.go
+```
+
 GitHub Pages publication is configured by `.github/workflows/pages.yml`; a
 repository administrator must select GitHub Actions as the Pages source as
 described in [docs/publishing.md](docs/publishing.md).

@@ -2,6 +2,7 @@
   "entries": [
     {"id":"PARSER-PUBLIC","symbol":"parser.*","owner":"parser","risk":"high","test_level":"integration","status":"verified","evidence":"parser/load-packages_contract_test.go","rationale":"Package loading is verified through source fixtures and consumer scenarios."},
     {"id":"TYPES-PUBLIC","symbol":"types.*","owner":"types","risk":"high","test_level":"unit","status":"verified","evidence":"types/contracts_test.go","rationale":"Value contracts are verified with focused unit tests."},
+    {"id":"STRUCT-ACCESSORS-EXAMPLE","symbol":"examples/codegen/struct-accessors","owner":"examples","risk":"medium","test_level":"example","status":"verified","evidence":"examples/codegen/struct-accessors/main_test.go","rationale":"The runnable consumer CLI is verified against a deterministic generated Go golden file."},
     {"id":"PROTOBUF-GENERATED","symbol":"internal/integration/protobuf/models.pb.go","owner":"integration","risk":"low","test_level":"excluded","status":"excluded","evidence":"internal/integration/protobuf/proto_test.go","rationale":"Generated output is exercised as a consumer input and must not be edited manually."},
     {"id":"LOADER-INTERNAL","symbol":"parser.loadPackages","owner":"parser","risk":"high","test_level":"integration","status":"verified","evidence":"parser/load-packages_contract_test.go","rationale":"The loader is high risk and observable only through package fixtures."}
   ]

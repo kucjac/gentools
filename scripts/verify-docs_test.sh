@@ -12,6 +12,8 @@ grep -q 'href="style.css"' "$repo/docs/index.html"
 grep -q 'name="viewport"' "$repo/docs/index.html"
 grep -q 'testing/integration.html' "$repo/docs/index.html"
 grep -q 'testing/unit-test-gaps.html' "$repo/docs/index.html"
+grep -q 'struct-accessors' "$repo/docs/code-generation.html"
+grep -q 'struct-accessors' "$repo/README.md"
 grep -q 'GitHub Pages' "$repo/README.md"
 grep -q 'kucjac.github.io/gentools' "$repo/README.md"
 if grep -q 'href="missing.html"' "$repo/docs/index.html"; then
