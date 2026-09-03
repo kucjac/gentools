@@ -44,6 +44,22 @@ Configure Go through your IDE or a version manager such as mise or asdf:
 make test
 ```
 
+The canonical lint gate uses golangci-lint `v2.13.2`. Install that exact
+release from the official binary installer into a directory on `PATH`, then
+run:
+
+```sh
+curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b "$(go env GOPATH)/bin" v2.13.2
+golangci-lint version
+golangci-lint config verify --config .golangci.yml
+make golangci-lint
+```
+
+The local command and hosted lint job both apply `.golangci.yml` to the root
+module (`./...`). Findings produce a non-zero result. See the [CI and lint
+quickstart](./specs/004-ci-lint-modernization/quickstart.md) for failure-path
+and matrix validation evidence.
+
 ### Test quality and examples
 
 Visit the [Gentools guides](https://kucjac.github.io/gentools/) for a polished,

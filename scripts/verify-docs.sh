@@ -21,10 +21,17 @@ if [[ -z ${PAGES_ARTIFACT_DIR:-} ]]; then cleanup=true; trap 'rm -rf -- "$artifa
 mkdir -p "$artifact"
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/gentools-example.XXXXXX")
 trap 'rm -rf -- "$tmp"; $cleanup && rm -rf -- "$artifact"' EXIT
+normalize_newlines() {
+  sed 's/\r$//' "$1" > "$2"
+}
 env -u GOROOT -u GOTOOLCHAIN "$go_bin" run ./examples/codegen/struct-summary -input ./examples/codegen/struct-summary/testdata -output "$tmp/summary.go"
-cmp "$tmp/summary.go" "$repo/examples/codegen/struct-summary/testdata/zz_summary.golden"
+normalize_newlines "$tmp/summary.go" "$tmp/summary.normalized.go"
+normalize_newlines "$repo/examples/codegen/struct-summary/testdata/zz_summary.golden" "$tmp/summary.golden.normalized"
+cmp "$tmp/summary.normalized.go" "$tmp/summary.golden.normalized"
 env -u GOROOT -u GOTOOLCHAIN "$go_bin" run ./examples/codegen/struct-accessors -input ./examples/codegen/struct-accessors/testdata -type Account -fields ID,Email -output "$tmp/account_accessors.go"
-cmp "$tmp/account_accessors.go" "$repo/examples/codegen/struct-accessors/testdata/zz_account_accessors.golden.go"
+normalize_newlines "$tmp/account_accessors.go" "$tmp/account_accessors.normalized.go"
+normalize_newlines "$repo/examples/codegen/struct-accessors/testdata/zz_account_accessors.golden.go" "$tmp/account_accessors.golden.normalized"
+cmp "$tmp/account_accessors.normalized.go" "$tmp/account_accessors.golden.normalized"
 while IFS= read -r -d '' page; do
   while IFS= read -r link; do
     case $link in http*|\#*|mailto:*) continue;; esac

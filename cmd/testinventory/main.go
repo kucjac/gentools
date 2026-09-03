@@ -7,11 +7,11 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"sort"
 	"strings"
+
+	"golang.org/x/tools/go/packages"
 )
 
 type entry struct {
@@ -104,14 +104,15 @@ func packageWildcard(symbol string) string { return strings.Split(symbol, ".")[0
 func exportedSymbols() ([]string, error) {
 	var result []string
 	for _, dir := range []string{"parser", "types"} {
-		pkgs, err := parser.ParseDir(token.NewFileSet(), dir, func(info os.FileInfo) bool {
-			return strings.HasSuffix(info.Name(), ".go") && !strings.HasSuffix(info.Name(), "_test.go")
-		}, 0)
+		pkgs, err := packages.Load(&packages.Config{Mode: packages.NeedName | packages.NeedSyntax}, "./"+dir)
 		if err != nil {
 			return nil, err
 		}
 		for _, pkg := range pkgs {
-			for _, file := range pkg.Files {
+			if len(pkg.Errors) > 0 {
+				return nil, fmt.Errorf("load %s: %w", dir, pkg.Errors[0])
+			}
+			for _, file := range pkg.Syntax {
 				for _, decl := range file.Decls {
 					switch d := decl.(type) {
 					case *ast.FuncDecl:

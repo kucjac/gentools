@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -19,9 +20,13 @@ func TestGenerateSelectedAccessors(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != string(want) {
+	if normalizeNewlines(string(got)) != normalizeNewlines(string(want)) {
 		t.Fatalf("generated accessors differ\nwant:\n%s\ngot:\n%s", want, got)
 	}
+}
+
+func normalizeNewlines(value string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(value, "\r\n", "\n"), "\r", "\n")
 }
 
 func TestGenerateRejectsMissingOrUnexportedField(t *testing.T) {
